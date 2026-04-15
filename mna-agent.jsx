@@ -1,180 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "postchain-client";
 
-// ─── Config (from .env) ──────────────────────────────────────────────────────
-
-const CHROMIA_NODE_URL = import.meta.env.VITE_CHROMIA_NODE_URL;
-const CHROMIA_BRID = import.meta.env.VITE_CHROMIA_BRID;
-
-// ─── Anthropic client ────────────────────────────────────────────────────────
-// API key injected server-side by the Vite proxy — never reaches the browser bundle.
-const anthropic = new Anthropic({
-  apiKey: "proxy",
-  dangerouslyAllowBrowser: true,
-  baseURL: "/api/anthropic",
-});
-
-// ─── Anthropic API call ──────────────────────────────────────────────────────
-
-const SYSTEM_PROMPT = `You are an autonomous agent for the My Neighbor Alice (MNA) dApp on the Chromia blockchain.
-
-You have access to two tools:
-1. get_ft4_inventory — queries the player's on-chain inventory
-2. buy_items — executes a purchase from a named shop
-
-When the user gives you a goal, reason step by step, call the appropriate tools in sequence, and report what you did.
-Always check inventory before buying. Be concise in your reasoning. When the goal is complete, summarise what was accomplished.
-
-IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly.`;
-
-const TOOLS = [
-  {
-    name: "get_ft4_inventory",
-    description:
-      "Query the player's current on-chain inventory. Returns a list of assets with name and amount. Call this first to understand what the player currently has.",
-    input_schema: {
-      type: "object",
-      properties: {
-        account_id: {
-          type: "string",
-          description: "The player's account ID as a hex string (byte_array)",
-        },
-      },
-      required: ["account_id"],
-    },
-  },
-  {
-    name: "buy_items",
-    description:
-      "Purchase items from a named shop on the MNA dApp. Specify the shop name and a map of item names to quantities.",
-    input_schema: {
-      type: "object",
-      properties: {
-        shop_name: {
-          type: "string",
-          description: "The name of the shop to buy from, e.g. 'general_store'",
-        },
-        items: {
-          type: "object",
-          description:
-            "A map of item name to quantity, e.g. { 'carrot_seed': 10, 'water_bucket': 5 }",
-          additionalProperties: { type: "integer" },
-        },
-      },
-      required: ["shop_name", "items"],
-    },
-  },
-];
-
-async function callClaude(messages) {
-  return anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    tools: TOOLS,
-    tool_choice: { type: "auto" },
-    messages,
-  });
-}
-
-// ─── Chromia execution layer ─────────────────────────────────────────────────
-
-let _chromiaClient = null;
-
-async function getChromiaClient() {
-  if (_chromiaClient) return _chromiaClient;
-  if (!CHROMIA_NODE_URL || !CHROMIA_BRID) {
-    throw new Error(
-      "Set VITE_CHROMIA_NODE_URL and VITE_CHROMIA_BRID in your .env file"
-    );
-  }
-  _chromiaClient = await createClient({
-    nodeUrlPool: [CHROMIA_NODE_URL],
-    blockchainRid: CHROMIA_BRID,
-  });
-  return _chromiaClient;
-}
-
-async function executeChromiaQuery(toolName, toolInput) {
-  const client = await getChromiaClient();
-
-  if (toolName === "get_ft4_inventory") {
-    const data = await client.query("get_ft4_inventory", {
-      account_id: Buffer.from(toolInput.account_id, "hex"),
-    });
-    return { success: true, data };
-  }
-
-  if (toolName === "buy_items") {
-    // buy_items is a signed blockchain operation — requires a wallet session.
-    // TODO: session.call(op("buy_items", toolInput.shop_name, gtv.fromJSON(toolInput.items)))
-    const tx_rid = "0x" + Math.random().toString(16).slice(2, 18).toUpperCase();
-    return {
-      success: true,
-      tx_rid,
-      purchased: toolInput.items,
-      shop: toolInput.shop_name,
-      note: "buy_items requires a signed wallet session — connect MetaMask via ft4 to execute real transactions",
-    };
-  }
-
-  return { success: false, error: "Unknown tool" };
-}
-
-// ─── Agent loop ──────────────────────────────────────────────────────────────
-
-async function runAgentCycle(messages, onEvent) {
-  const MAX_ITERATIONS = 10;
-  let iteration = 0;
-  let history = [...messages];
-
-  while (iteration < MAX_ITERATIONS) {
-    iteration++;
-    onEvent({ type: "thinking", iteration });
-
-    const response = await callClaude(history);
-
-    // Collect text thought if present
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (textBlock?.text) {
-      onEvent({ type: "thought", text: textBlock.text });
-    }
-
-    // Terminal — no tool use
-    if (response.stop_reason !== "tool_use") {
-      const finalText =
-        textBlock?.text ?? "Goal complete.";
-      onEvent({ type: "done", text: finalText });
-      history.push({ role: "assistant", content: response.content });
-      return history;
-    }
-
-    // Tool use — execute all tool calls in this response
-    const toolUseBlocks = response.content.filter((b) => b.type === "tool_use");
-    history.push({ role: "assistant", content: response.content });
-
-    const toolResults = [];
-    for (const toolUse of toolUseBlocks) {
-      onEvent({ type: "tool_call", name: toolUse.name, input: toolUse.input });
-
-      const result = await executeChromiaQuery(toolUse.name, toolUse.input);
-
-      onEvent({ type: "tool_result", name: toolUse.name, result });
-
-      toolResults.push({
-        type: "tool_result",
-        tool_use_id: toolUse.id,
-        content: JSON.stringify(result),
-      });
-    }
-
-    history.push({ role: "user", content: toolResults });
-  }
-
-  onEvent({ type: "done", text: "Reached maximum iteration limit." });
-  return history;
-}
+const API_URL = "http://localhost:3000";
 
 // ─── UI Components ───────────────────────────────────────────────────────────
 
@@ -282,10 +108,10 @@ function AgentMessage({ events }) {
           )?.result;
           return <ToolCallCard key={i} name={ev.name} input={ev.input} result={result} />;
         }
-        if (ev.type === "done") return (
+        if (ev.type === "done" || ev.type === "error") return (
           <p key={i} style={{
             margin: "8px 0 0",
-            color: "var(--color-text-primary)",
+            color: ev.type === "error" ? "#c0392b" : "var(--color-text-primary)",
             lineHeight: 1.6,
             fontSize: 14,
             fontWeight: 500,
@@ -319,7 +145,7 @@ function ThinkingDots() {
 export default function App() {
   const [accountId, setAccountId] = useState("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2");
   const [goal, setGoal] = useState("");
-  const [messages, setMessages] = useState([]); // {role, events, text}
+  const [messages, setMessages] = useState([]);
   const [running, setRunning] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const bottomRef = useRef(null);
@@ -329,49 +155,53 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function handleSubmit() {
+  function handleSubmit() {
     if (!goal.trim() || running) return;
     const userGoal = goal.trim();
     setGoal("");
     setRunning(true);
 
-    const userMsg = { role: "user", text: userGoal, events: [] };
-    const agentMsg = { role: "agent", events: [], pending: true };
+    setMessages(prev => [
+      ...prev,
+      { role: "user", text: userGoal },
+      { role: "agent", events: [], pending: true },
+    ]);
 
-    setMessages(prev => [...prev, userMsg, agentMsg]);
-
-    // Inject account_id context into the first user message
-    const initialMessages = [
-      {
-        role: "user",
-        content: `Account ID: ${accountId}\n\nGoal: ${userGoal}`,
-      },
-    ];
-
+    const params = new URLSearchParams({ goal: userGoal, accountId });
+    const es = new EventSource(`${API_URL}/agent/run?${params}`);
     let agentEvents = [];
 
-    try {
-      await runAgentCycle(initialMessages, (event) => {
-        if (event.type === "thinking") return; // suppress iteration counter
-        agentEvents = [...agentEvents, event];
-        setMessages(prev => {
-          const copy = [...prev];
-          copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
-          return copy;
-        });
+    const finish = () => {
+      es.close();
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { ...copy[copy.length - 1], pending: false };
+        return copy;
       });
-    } catch (err) {
-      agentEvents = [...agentEvents, { type: "done", text: `Error: ${err.message}` }];
-    }
+      setRunning(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
+    };
 
-    setMessages(prev => {
-      const copy = [...prev];
-      copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents, pending: false };
-      return copy;
-    });
+    es.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      agentEvents = [...agentEvents, event];
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
+        return copy;
+      });
+      if (event.type === "done" || event.type === "error") finish();
+    };
 
-    setRunning(false);
-    setTimeout(() => inputRef.current?.focus(), 100);
+    es.onerror = () => {
+      agentEvents = [...agentEvents, { type: "error", text: "Connection to API lost." }];
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
+        return copy;
+      });
+      finish();
+    };
   }
 
   function handleKey(e) {
@@ -630,7 +460,7 @@ export default function App() {
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 6, textAlign: "center" }}>
-            Queries hit the live Chromia node · buy_items requires a wallet session (MetaMask + ft4)
+            Agent runs on the API server · buy_items requires a wallet session (MetaMask + ft4)
           </p>
         </div>
       </div>
