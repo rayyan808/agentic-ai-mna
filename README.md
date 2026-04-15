@@ -57,7 +57,7 @@ Open [http://localhost:5173](http://localhost:5173). Enter your account ID in th
 | Layer | Technology |
 |---|---|
 | UI | React 18 + Vite |
-| LLM | Claude (`claude-opus-4-6`) via `@anthropic-ai/sdk` |
+| LLM | Claude (`claude-sonnet-4-6`) via `@anthropic-ai/sdk` |
 | Blockchain | Chromia via `postchain-client` |
 | API key security | Vite dev-server proxy (key never leaves the server) |
 
