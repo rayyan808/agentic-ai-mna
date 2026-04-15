@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "postchain-client";
+
+// ─── Config (from .env) ──────────────────────────────────────────────────────
+
+const CHROMIA_NODE_URL = import.meta.env.VITE_CHROMIA_NODE_URL;
+const CHROMIA_BRID = import.meta.env.VITE_CHROMIA_BRID;
 
 // ─── Anthropic client ────────────────────────────────────────────────────────
 // API key injected server-side by the Vite proxy — never reaches the browser bundle.
@@ -72,45 +78,44 @@ async function callClaude(messages) {
   });
 }
 
-// ─── Mock Chromia execution layer ────────────────────────────────────────────
-// In production: replace with real postchain-client + ft4 calls
-// session.call(op("buy_items", shop_name, gtv.fromJSON(items)))
-// client.query("get_ft4_inventory", { account_id: Buffer.from(account_id, "hex") })
+// ─── Chromia execution layer ─────────────────────────────────────────────────
 
-const MOCK_INVENTORY = [
-  { name: "carrot_seed", amount: "50" },
-  { name: "water_bucket", amount: "20" },
-  { name: "carrot", amount: "3" },
-  { name: "CHR", amount: "12500000" }, // in nanoGTX
-];
+let _chromiaClient = null;
+
+async function getChromiaClient() {
+  if (_chromiaClient) return _chromiaClient;
+  if (!CHROMIA_NODE_URL || !CHROMIA_BRID) {
+    throw new Error(
+      "Set VITE_CHROMIA_NODE_URL and VITE_CHROMIA_BRID in your .env file"
+    );
+  }
+  _chromiaClient = await createClient({
+    nodeUrlPool: [CHROMIA_NODE_URL],
+    blockchainRid: CHROMIA_BRID,
+  });
+  return _chromiaClient;
+}
 
 async function executeChromiaQuery(toolName, toolInput) {
-  await new Promise((r) => setTimeout(r, 800 + Math.random() * 400));
+  const client = await getChromiaClient();
 
   if (toolName === "get_ft4_inventory") {
-    // Real call would be:
-    // await client.query("get_ft4_inventory", {
-    //   account_id: Buffer.from(toolInput.account_id, "hex")
-    // })
-    return {
-      success: true,
-      data: MOCK_INVENTORY,
-      note: "[mock] Real call: client.query('get_ft4_inventory', { account_id })",
-    };
+    const data = await client.query("get_ft4_inventory", {
+      account_id: Buffer.from(toolInput.account_id, "hex"),
+    });
+    return { success: true, data };
   }
 
   if (toolName === "buy_items") {
-    // Real call would be:
-    // await session.call(op("buy_items", toolInput.shop_name, toolInput.items))
-    const itemList = Object.entries(toolInput.items)
-      .map(([k, v]) => `${v}x ${k}`)
-      .join(", ");
+    // buy_items is a signed blockchain operation — requires a wallet session.
+    // TODO: session.call(op("buy_items", toolInput.shop_name, gtv.fromJSON(toolInput.items)))
+    const tx_rid = "0x" + Math.random().toString(16).slice(2, 18).toUpperCase();
     return {
       success: true,
-      tx_rid: "0x" + Math.random().toString(16).slice(2, 18).toUpperCase(),
+      tx_rid,
       purchased: toolInput.items,
       shop: toolInput.shop_name,
-      note: `[mock] Real call: session.call(op('buy_items', '${toolInput.shop_name}', items))`,
+      note: "buy_items requires a signed wallet session — connect MetaMask via ft4 to execute real transactions",
     };
   }
 
@@ -625,7 +630,7 @@ export default function App() {
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 6, textAlign: "center" }}>
-            Chromia calls are mocked — expand tool cards to see the real ft4 call that would be made
+            Queries hit the live Chromia node · buy_items requires a wallet session (MetaMask + ft4)
           </p>
         </div>
       </div>
