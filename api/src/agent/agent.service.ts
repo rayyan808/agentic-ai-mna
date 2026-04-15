@@ -103,7 +103,72 @@ export class AgentService {
   }
 
   async runAgent(goal: string, accountId: string, subject: Subject<MessageEvent>) {
-    subject.next({ data: { type: 'error', text: 'Not yet implemented' } } as MessageEvent);
+    const emit = (data: object) => subject.next({ data } as MessageEvent);
+
+    const messages: Anthropic.MessageParam[] = [
+      { role: 'user', content: `Account ID: ${accountId}\n\nGoal: ${goal}` },
+    ];
+
+    const MAX_ITERATIONS = 10;
+    let iteration = 0;
+
+    try {
+      while (iteration < MAX_ITERATIONS) {
+        iteration++;
+
+        const response = await this.anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          tools: TOOLS,
+          tool_choice: { type: 'auto' },
+          messages,
+        });
+
+        const textBlock = response.content.find((b) => b.type === 'text') as
+          | Anthropic.TextBlock
+          | undefined;
+
+        if (textBlock?.text) {
+          emit({ type: 'thought', text: textBlock.text });
+        }
+
+        if (response.stop_reason !== 'tool_use') {
+          emit({ type: 'done', text: textBlock?.text ?? 'Goal complete.' });
+          subject.complete();
+          return;
+        }
+
+        const toolUseBlocks = response.content.filter(
+          (b) => b.type === 'tool_use',
+        ) as Anthropic.ToolUseBlock[];
+
+        messages.push({ role: 'assistant', content: response.content });
+
+        const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+        for (const toolUse of toolUseBlocks) {
+          emit({ type: 'tool_call', name: toolUse.name, input: toolUse.input });
+
+          const result = await this.executeTool(toolUse.name, toolUse.input);
+
+          emit({ type: 'tool_result', name: toolUse.name, result });
+
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(result),
+          });
+        }
+
+        messages.push({ role: 'user', content: toolResults });
+      }
+
+      emit({ type: 'done', text: 'Reached maximum iteration limit.' });
+    } catch (err) {
+      emit({ type: 'error', text: err.message });
+    }
+
     subject.complete();
   }
 }
