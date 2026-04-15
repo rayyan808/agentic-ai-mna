@@ -43,10 +43,12 @@ Open `.env` and fill in the three values:
 ## Run
 
 ```bash
-npm run dev
+npm start
 ```
 
-Open [http://localhost:5173](http://localhost:5173). Enter your account ID in the **config** panel (hex `byte_array`), then type a goal:
+Open [http://localhost:5173](http://localhost:5173).
+
+> **Note:** Always use `npm start` (or `npm run dev`) — not `npm run preview`. The `preview` command serves the production build without the Vite dev-server proxy, so Anthropic API calls will fail. Enter your account ID in the **config** panel (hex `byte_array`), then type a goal:
 
 - *Check my current inventory*
 - *Buy 5 carrot seeds from the general store*
