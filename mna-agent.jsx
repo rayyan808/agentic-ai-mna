@@ -1,4 +1,13 @@
 import { useState, useRef, useEffect } from "react";
+import Anthropic from "@anthropic-ai/sdk";
+
+// ─── Anthropic client ────────────────────────────────────────────────────────
+// API key injected server-side by the Vite proxy — never reaches the browser bundle.
+const anthropic = new Anthropic({
+  apiKey: "proxy",
+  dangerouslyAllowBrowser: true,
+  baseURL: "/api/anthropic",
+});
 
 // ─── Anthropic API call ──────────────────────────────────────────────────────
 
@@ -53,20 +62,14 @@ const TOOLS = [
 ];
 
 async function callClaude(messages) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      tools: TOOLS,
-      tool_choice: { type: "auto" },
-      messages,
-    }),
+  return anthropic.messages.create({
+    model: "claude-opus-4-6",
+    max_tokens: 1024,
+    system: SYSTEM_PROMPT,
+    tools: TOOLS,
+    tool_choice: { type: "auto" },
+    messages,
   });
-  if (!res.ok) throw new Error(`Anthropic API error: ${res.status}`);
-  return res.json();
 }
 
 // ─── Mock Chromia execution layer ────────────────────────────────────────────
