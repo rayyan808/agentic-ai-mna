@@ -4,14 +4,14 @@ import { createClient, newSignatureProvider } from "postchain-client";
 import { Subject } from "rxjs";
 import Anthropic from "@anthropic-ai/sdk";
 import { ChromiaService } from "src/chromia/chromia.service";
-import { SYSTEM_PROMPT, TOOLS } from "./agent.constants";
+import { SYSTEM_PROMPT, tool_names, TOOLS } from "./agent.constants";
+import { ops, queries, TX_STATUS } from "src/chromia/chromia.constants";
 
 @Injectable()
 export class AgentService {
   private anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   private chromiaClient: any = null;
-  chromiaService: ChromiaService;
-
+  constructor(private readonly chromiaService: ChromiaService) {}
   private async getChromiaClient() {
     if (this.chromiaClient) return this.chromiaClient;
     const nodeUrl = process.env.CHROMIA_NODE_URL;
@@ -28,26 +28,26 @@ export class AgentService {
 
   private async executeTool(toolName: string, toolInput: any) {
     const client = await this.getChromiaClient();
-    if (toolName === GET_FT4_INVENTORY) {
+    if (toolName === tool_names.GET_FT4_INVENTORY) {
       const player_assets = await this.chromiaService.get_ft4_inventory(
         client,
         toolInput.account_id,
       );
       return { success: true, player_assets };
     }
-    if (toolName == GET_ALL_SHOP_LISTINGS) {
+    if (toolName == tool_names.GET_ALL_SHOP_LISTINGS) {
       const all_shop_listings =
         await this.chromiaService.get_all_shop_listings(client);
       return { success: true, all_shop_listings };
     }
-    if (toolName === "buy_items") {
+    if (toolName === tool_names.BUY_ITEMS) {
       const signatureProvider = newSignatureProvider({
         privKey: process.env.AGENT_WALLET_KEY,
       });
       const txStatus = await this.chromiaService.callOperation(
         client,
         signatureProvider,
-        "shop.buy_items",
+        ops.BUY_ITEMS,
         [toolInput.shop_name, toolInput.items],
       );
       return {

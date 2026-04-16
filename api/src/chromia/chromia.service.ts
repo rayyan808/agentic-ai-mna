@@ -1,4 +1,13 @@
 import { IClient, RawGtv, SignatureProvider } from "postchain-client";
+import { ops, queries, TX_STATUS } from "./chromia.constants";
+import {
+  crafting_station,
+  player_asset_info,
+  shop_listing,
+} from "./chromia.dtos";
+import { Injectable } from "@nestjs/common";
+
+@Injectable()
 export class ChromiaService {
   async callOperation(
     client: IClient,
@@ -29,13 +38,18 @@ export class ChromiaService {
     client: IClient,
     accountID: string,
   ): Promise<player_asset_info[]> {
-    const result = await client.query<player_asset_info[]>(GET_FT4_INVENTORY, {
-      account_id: this.stringToBuffer(accountID),
-    });
+    const result = await client.query<player_asset_info[]>(
+      queries.GET_FT4_INVENTORY,
+      {
+        account_id: this.stringToBuffer(accountID),
+      },
+    );
     return result;
   }
   async get_all_shop_listings(client: IClient): Promise<shop_listing[]> {
-    const result = await client.query<shop_listing[]>(GET_ALL_SHOP_LISTINGS);
+    const result = await client.query<shop_listing[]>(
+      queries.GET_ALL_SHOP_LISTINGS,
+    );
     return result;
   }
   async get_stations(
@@ -43,7 +57,7 @@ export class ChromiaService {
     accountId: string,
   ): Promise<crafting_station[]> {
     const result = await client.query<crafting_station[]>(
-      GET_CRAFTING_STATIONS,
+      queries.GET_CRAFTING_STATIONS,
       {
         account_id: this.stringToBuffer(accountId),
       },
