@@ -2,6 +2,116 @@ import { useState, useRef, useEffect } from "react";
 
 const API_URL = "http://localhost:3000";
 
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+function parseInline(text, keyPrefix) {
+  const parts = [];
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let last = 0;
+  let match;
+  let idx = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const token = match[0];
+    const k = `${keyPrefix}-${idx++}`;
+    if (token.startsWith("`")) {
+      parts.push(
+        <code key={k} style={{
+          fontFamily: "'IBM Plex Mono', monospace",
+          background: "var(--color-background-tertiary)",
+          padding: "1px 5px",
+          borderRadius: 3,
+          fontSize: "0.88em",
+        }}>{token.slice(1, -1)}</code>
+      );
+    } else if (token.startsWith("**")) {
+      parts.push(<strong key={k}>{token.slice(2, -2)}</strong>);
+    } else {
+      parts.push(<em key={k}>{token.slice(1, -1)}</em>);
+    }
+    last = match.index + token.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function MarkdownText({ text }) {
+  const lines = text.split("\n");
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.trim() === "") { i++; continue; }
+
+    const h3m = line.match(/^### (.+)/);
+    const h2m = line.match(/^## (.+)/);
+    const h1m = line.match(/^# (.+)/);
+
+    if (h1m) {
+      elements.push(
+        <p key={i} style={{ margin: "10px 0 4px", fontSize: 15, fontWeight: 700, color: "var(--color-text-primary)" }}>
+          {parseInline(h1m[1], `h1-${i}`)}
+        </p>
+      );
+    } else if (h2m) {
+      elements.push(
+        <p key={i} style={{ margin: "8px 0 4px", fontSize: 14, fontWeight: 650, color: "var(--color-text-primary)" }}>
+          {parseInline(h2m[1], `h2-${i}`)}
+        </p>
+      );
+    } else if (h3m) {
+      elements.push(
+        <p key={i} style={{ margin: "6px 0 4px", fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)" }}>
+          {parseInline(h3m[1], `h3-${i}`)}
+        </p>
+      );
+    } else if (/^[-*] /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(
+          <li key={i} style={{ marginBottom: 3 }}>
+            {parseInline(lines[i].slice(2), `li-${i}`)}
+          </li>
+        );
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} style={{ margin: "4px 0", paddingLeft: 20 }}>{items}</ul>
+      );
+      continue;
+    } else if (/^\d+\. /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(
+          <li key={i} style={{ marginBottom: 3 }}>
+            {parseInline(lines[i].replace(/^\d+\. /, ""), `oli-${i}`)}
+          </li>
+        );
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} style={{ margin: "4px 0", paddingLeft: 20 }}>{items}</ol>
+      );
+      continue;
+    } else {
+      elements.push(
+        <p key={i} style={{ margin: "0 0 6px", lineHeight: 1.6 }}>
+          {parseInline(line, `p-${i}`)}
+        </p>
+      );
+    }
+    i++;
+  }
+
+  return (
+    <div style={{ fontSize: 14, color: "var(--color-text-primary)" }}>
+      {elements}
+    </div>
+  );
+}
+
 // ─── UI Components ───────────────────────────────────────────────────────────
 
 function ToolCallCard({ name, input, result }) {
@@ -90,17 +200,48 @@ function ToolCallCard({ name, input, result }) {
   );
 }
 
+function ThoughtBlock({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ margin: "4px 0 6px" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          color: "var(--color-text-tertiary)",
+          fontSize: 12,
+          fontFamily: "'IBM Plex Mono', monospace",
+        }}
+      >
+        <span style={{ fontSize: 10 }}>{open ? "▼" : "▶"}</span>
+        thinking
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 6,
+          paddingLeft: 12,
+          borderLeft: "2px solid var(--color-border-tertiary)",
+          color: "var(--color-text-secondary)",
+        }}>
+          <MarkdownText text={text} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AgentMessage({ events }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {events.map((ev, i) => {
         if (ev.type === "thought") return (
-          <p key={i} style={{
-            margin: "0 0 8px",
-            color: "var(--color-text-primary)",
-            lineHeight: 1.6,
-            fontSize: 14,
-          }}>{ev.text}</p>
+          <ThoughtBlock key={i} text={ev.text} />
         );
         if (ev.type === "tool_call") {
           const result = events.find(
@@ -109,13 +250,12 @@ function AgentMessage({ events }) {
           return <ToolCallCard key={i} name={ev.name} input={ev.input} result={result} />;
         }
         if (ev.type === "done" || ev.type === "error") return (
-          <p key={i} style={{
-            margin: "8px 0 0",
+          <div key={i} style={{
+            marginTop: 8,
             color: ev.type === "error" ? "#c0392b" : "var(--color-text-primary)",
-            lineHeight: 1.6,
-            fontSize: 14,
-            fontWeight: 500,
-          }}>{ev.text}</p>
+          }}>
+            <MarkdownText text={ev.text} />
+          </div>
         );
         return null;
       })}
