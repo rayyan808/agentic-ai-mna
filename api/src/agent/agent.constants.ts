@@ -1,25 +1,22 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { describe } from "node:test";
-import { queries, ops } from "src/chromia/chromia.constants";
 const SYSTEM_PROMPT = `You are an autonomous agent for the My Neighbor Alice (MNA) dApp on the Chromia blockchain.
 
-You have access to two tools:
-1. get_ft4_inventory — queries the player's on-chain inventory
-2. buy_items — executes a purchase from a named shop
+Analyze the tools at your disposal.
 
-When the user gives you a goal, reason step by step, call the appropriate tools in sequence, and report what you did.
-Always check inventory before buying. Be concise in your reasoning. When the goal is complete, summarise what was accomplished.
+When the user gives you a goal, reason step by step, call the appropriate tools in sequence.
+Be concise in your reasoning, avoid using more words than necessary. Answer with only what is needed, don't hedge.
 
-IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly.`;
+IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly. `;
 const tool_names = {
-  GET_ACCOUNT_ID: "get_account_id",
+  //GET_ACCOUNT_ID: "get_account_id",
+  DOES_PLAYER_OWN_ITEM: "does_player_own_item",
   GET_FT4_INVENTORY: "get_ft4_inventory",
   GET_ALL_SHOP_LISTINGS: "get_all_shop_listings",
   BUY_ITEMS: "buy_items",
 };
 
 const TOOLS: Anthropic.Tool[] = [
-  {
+  /*{
     name: tool_names.GET_ACCOUNT_ID,
     description: `This is a query. It returns the associated accountId for a users evm_address. This should be called before calling any query or operation that requires the users accountId.`,
     input_schema: {
@@ -33,6 +30,19 @@ const TOOLS: Anthropic.Tool[] = [
       },
       required: ["evm_address"],
     },
+  },*/
+  {
+    name: tool_names.DOES_PLAYER_OWN_ITEM,
+    description: `This is a query that returns a boolean. true if the user owns atleast one instance of the asset name provided`,
+    input_schema: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: `The name of the asset`,
+        },
+      },
+    },
   },
   {
     name: tool_names.GET_FT4_INVENTORY,
@@ -43,32 +53,12 @@ const TOOLS: Anthropic.Tool[] = [
       Call this first to understand what the player currently has.`,
     input_schema: {
       type: "object",
-      properties: {
-        account_id: {
-          type: "string",
-          description: "The player's account ID as a hex string (byte_array)",
-        },
-      },
-      required: ["account_id"],
+      properties: {},
     },
   },
   {
     name: tool_names.GET_ALL_SHOP_LISTINGS,
-    description: `This is a query. Get all items for sale. Returns a list of 
-    interface shop_listing {
-      shop_name: string;
-      sold_item: string;
-      sold_amount: number;
-      enabled: boolean;
-      sort_order: number;
-      partner: string;
-      revenue_share_percentage: number;
-      variant_group: string;
-      variant_group_order: number;
-      price_type: string;
-      price_currency: string;
-      price_amount: number;
-    }
+    description: `This is a query. Get all items for sale. Returns a list of {shop_name, price_amount, price_currency} and other attributes that dont concern you
       The shop_name refers to the shop where this item is listed for sale, we need this to input into buy_items
       price_amount defines the cost of the item we must pay in terms of FT4 tokens
       price_currency is the name of the FT4 token we must pay in 
@@ -85,11 +75,6 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        private_key: {
-          type: "string",
-          description:
-            "The users private key that we use to sign a transaction.",
-        },
         shop_name: {
           type: "string",
           description: "The name of the shop to buy from, e.g. 'general_store'",
@@ -101,7 +86,7 @@ const TOOLS: Anthropic.Tool[] = [
           additionalProperties: { type: "integer" },
         },
       },
-      required: ["private_key", "shop_name", "items"],
+      required: ["shop_name", "items"],
     },
   },
 ];
