@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { MessageEvent } from "@nestjs/common";
 import { createClient, newSignatureProvider } from "postchain-client";
-import { getBalancesByAccountId } from "@chromia/ft4";
 import { Subject } from "rxjs";
 import Anthropic from "@anthropic-ai/sdk";
 import { ChromiaService } from "src/chromia/chromia.service";
@@ -29,7 +28,7 @@ export class AgentService {
 
   private async executeTool(toolName: string, toolInput: any) {
     const client = await this.getChromiaClient();
-    if (toolName === "get_ft4_inventory") {
+    if (toolName === GET_FT4_INVENTORY) {
       const player_assets = await this.chromiaService.get_ft4_inventory(
         client,
         toolInput.account_id,
@@ -37,7 +36,11 @@ export class AgentService {
 
       return { success: true, player_assets };
     }
-
+    if (toolName == GET_ALL_SHOP_LISTINGS) {
+      const all_shop_listings =
+        await this.chromiaService.get_all_shop_listings(client);
+      return { success: true, all_shop_listings };
+    }
     if (toolName === "buy_items") {
       const signatureProvider = newSignatureProvider({
         privKey: process.env.AGENT_WALLET_KEY,

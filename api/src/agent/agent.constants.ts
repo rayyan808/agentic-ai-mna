@@ -13,9 +13,12 @@ IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute 
 
 const TOOLS: Anthropic.Tool[] = [
   {
-    name: "player.get_ft4_inventory",
-    description:
-      "Query the player's current on-chain inventory. Returns a list of {name: string, amount: integer} where name is the name of the asset, and the amount defines how many of the asset the user currently owns. Call this first to understand what the player currently has.",
+    name: GET_FT4_INVENTORY,
+    description: `This is a query. It returns all FT4 token names that a user owns, alongside the amount of each owned.
+      FT4 is a token standard we use, every FT4 token has a unique name that we identify it using.
+      Returns a list of {name: string, amount: integer} where name is the name of the asset, 
+      amount defines how many of the asset the user currently owns. 
+      Call this first to understand what the player currently has.`,
     input_schema: {
       type: "object",
       properties: {
@@ -26,6 +29,29 @@ const TOOLS: Anthropic.Tool[] = [
       },
       required: ["account_id"],
     },
+  },
+  {
+    name: GET_ALL_SHOP_LISTINGS,
+    description: `This is a query. Get all items for sale. Returns a list of 
+    interface shop_listing {
+      shop_name: string;
+      sold_item: string;
+      sold_amount: number;
+      enabled: boolean;
+      sort_order: number;
+      partner: string;
+      revenue_share_percentage: number;
+      variant_group: string;
+      variant_group_order: number;
+      price_type: string;
+      price_currency: string;
+      price_amount: number;
+    }
+      The shop_name refers to the shop where this item is listed for sale, we need this to input into buy_items
+      price_amount defines the cost of the item we must pay in terms of FT4 tokens
+      price_currency is the name of the FT4 token we must pay in 
+    `,
+    input_schema: null,
   },
   {
     name: "shop.buy_items",

@@ -34,6 +34,10 @@ export class ChromiaService {
     });
     return result;
   }
+  async get_all_shop_listings(client: IClient): Promise<shop_listing[]> {
+    const result = await client.query<shop_listing[]>(GET_ALL_SHOP_LISTINGS);
+    return result;
+  }
   stringToBuffer(str: string): Buffer {
     return Buffer.from(str, "hex");
   }
