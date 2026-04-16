@@ -1,6 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { MessageEvent } from "@nestjs/common";
-import { createClient, newSignatureProvider } from "postchain-client";
+import {
+  createClient,
+  newSignatureProvider,
+  SignatureProvider,
+} from "postchain-client";
 import { Subject } from "rxjs";
 import Anthropic from "@anthropic-ai/sdk";
 import { ChromiaService } from "src/chromia/chromia.service";
@@ -27,25 +31,32 @@ export class AgentService {
   }
 
   private async executeTool(toolName: string, toolInput: any) {
-    const client = await this.getChromiaClient();
+    if (toolName == tool_names.GET_ACCOUNT_ID) {
+      const accountId = await this.chromiaService.get_account_id(
+        this.chromiaClient,
+        toolInput.evm_address,
+      );
+      return { success: true, accountId };
+    }
     if (toolName === tool_names.GET_FT4_INVENTORY) {
       const player_assets = await this.chromiaService.get_ft4_inventory(
-        client,
+        this.chromiaClient,
         toolInput.account_id,
       );
       return { success: true, player_assets };
     }
     if (toolName == tool_names.GET_ALL_SHOP_LISTINGS) {
-      const all_shop_listings =
-        await this.chromiaService.get_all_shop_listings(client);
+      const all_shop_listings = await this.chromiaService.get_all_shop_listings(
+        this.chromiaClient,
+      );
       return { success: true, all_shop_listings };
     }
     if (toolName === tool_names.BUY_ITEMS) {
       const signatureProvider = newSignatureProvider({
-        privKey: process.env.AGENT_WALLET_KEY,
+        privKey: toolInput.private_key,
       });
       const txStatus = await this.chromiaService.callOperation(
-        client,
+        this.chromiaClient,
         signatureProvider,
         ops.BUY_ITEMS,
         [toolInput.shop_name, toolInput.items],
@@ -62,17 +73,19 @@ export class AgentService {
 
   async runAgent(
     goal: string,
-    accountId: string,
+    privateKey: string,
+    evmAddress: string,
     subject: Subject<MessageEvent>,
   ) {
     const emit = (data: object) => subject.next({ data } as MessageEvent); //emit == send message event to the chat
 
     const messages: Anthropic.MessageParam[] = [
-      { role: "user", content: `Account ID: ${accountId}\n\nGoal: ${goal}` },
+      { role: "user", content: `EVM Address: ${evmAddress}\n\nGoal: ${goal}` },
     ];
 
     const MAX_ITERATIONS = 10;
     let iteration = 0;
+    this.chromiaClient = await this.getChromiaClient();
 
     try {
       while (iteration < MAX_ITERATIONS) {

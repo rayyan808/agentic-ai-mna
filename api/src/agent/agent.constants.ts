@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { describe } from "node:test";
 import { queries, ops } from "src/chromia/chromia.constants";
 const SYSTEM_PROMPT = `You are an autonomous agent for the My Neighbor Alice (MNA) dApp on the Chromia blockchain.
 
@@ -11,12 +12,28 @@ Always check inventory before buying. Be concise in your reasoning. When the goa
 
 IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly.`;
 const tool_names = {
+  GET_ACCOUNT_ID: "get_account_id",
   GET_FT4_INVENTORY: "get_ft4_inventory",
   GET_ALL_SHOP_LISTINGS: "get_all_shop_listings",
   BUY_ITEMS: "buy_items",
 };
 
 const TOOLS: Anthropic.Tool[] = [
+  {
+    name: tool_names.GET_ACCOUNT_ID,
+    description: `This is a query. It returns the associated accountId for a users evm_address. This should be called before calling any query or operation that requires the users accountId.`,
+    input_schema: {
+      type: "object",
+      properties: {
+        evm_address: {
+          type: "string",
+          description:
+            "The users evm_address. This is always provided by the user to the agent.",
+        },
+      },
+      required: ["evm_address"],
+    },
+  },
   {
     name: tool_names.GET_FT4_INVENTORY,
     description: `This is a query. It returns all FT4 token names that a user owns, alongside the amount of each owned.
@@ -68,6 +85,11 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
+        private_key: {
+          type: "string",
+          description:
+            "The users private key that we use to sign a transaction.",
+        },
         shop_name: {
           type: "string",
           description: "The name of the shop to buy from, e.g. 'general_store'",
@@ -79,7 +101,7 @@ const TOOLS: Anthropic.Tool[] = [
           additionalProperties: { type: "integer" },
         },
       },
-      required: ["shop_name", "items"],
+      required: ["private_key", "shop_name", "items"],
     },
   },
 ];
