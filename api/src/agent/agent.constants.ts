@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-
+import { queries, ops } from "src/chromia/chromia.constants";
 const SYSTEM_PROMPT = `You are an autonomous agent for the My Neighbor Alice (MNA) dApp on the Chromia blockchain.
 
 You have access to two tools:
@@ -10,10 +10,15 @@ When the user gives you a goal, reason step by step, call the appropriate tools 
 Always check inventory before buying. Be concise in your reasoning. When the goal is complete, summarise what was accomplished.
 
 IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly.`;
+const tool_names = {
+  GET_FT4_INVENTORY: "get_ft4_inventory",
+  GET_ALL_SHOP_LISTINGS: "get_all_shop_listings",
+  BUY_ITEMS: "buy_items",
+};
 
 const TOOLS: Anthropic.Tool[] = [
   {
-    name: GET_FT4_INVENTORY,
+    name: tool_names.GET_FT4_INVENTORY,
     description: `This is a query. It returns all FT4 token names that a user owns, alongside the amount of each owned.
       FT4 is a token standard we use, every FT4 token has a unique name that we identify it using.
       Returns a list of {name: string, amount: integer} where name is the name of the asset, 
@@ -31,7 +36,7 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
-    name: GET_ALL_SHOP_LISTINGS,
+    name: tool_names.GET_ALL_SHOP_LISTINGS,
     description: `This is a query. Get all items for sale. Returns a list of 
     interface shop_listing {
       shop_name: string;
@@ -51,10 +56,13 @@ const TOOLS: Anthropic.Tool[] = [
       price_amount defines the cost of the item we must pay in terms of FT4 tokens
       price_currency is the name of the FT4 token we must pay in 
     `,
-    input_schema: null,
+    input_schema: {
+      type: "object",
+      properties: {},
+    },
   },
   {
-    name: BUY_ITEMS,
+    name: tool_names.BUY_ITEMS,
     description:
       "Purchase items from a named shop. Specify the shop name and a map of item names to quantities. This is an operation and therefore returns only a transaction ID on success",
     input_schema: {
@@ -75,4 +83,4 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
 ];
-export { TOOLS, SYSTEM_PROMPT };
+export { TOOLS, SYSTEM_PROMPT, tool_names };
