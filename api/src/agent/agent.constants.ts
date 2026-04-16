@@ -54,7 +54,7 @@ const TOOLS: Anthropic.Tool[] = [
     input_schema: null,
   },
   {
-    name: "shop.buy_items",
+    name: BUY_ITEMS,
     description:
       "Purchase items from a named shop. Specify the shop name and a map of item names to quantities. This is an operation and therefore returns only a transaction ID on success",
     input_schema: {

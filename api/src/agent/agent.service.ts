@@ -33,7 +33,6 @@ export class AgentService {
         client,
         toolInput.account_id,
       );
-
       return { success: true, player_assets };
     }
     if (toolName == GET_ALL_SHOP_LISTINGS) {
@@ -45,18 +44,16 @@ export class AgentService {
       const signatureProvider = newSignatureProvider({
         privKey: process.env.AGENT_WALLET_KEY,
       });
-      const txID = this.chromiaService.callOperation(
+      const txStatus = await this.chromiaService.callOperation(
         client,
         signatureProvider,
         "shop.buy_items",
         [toolInput.shop_name, toolInput.items],
       );
       return {
-        success: true,
-        txID,
+        success: txStatus == TX_STATUS.SUCCESS,
         purchased: toolInput.items,
         shop: toolInput.shop_name,
-        note: "buy_items requires a signed wallet session — connect MetaMask via ft4 to execute real transactions",
       };
     }
 
