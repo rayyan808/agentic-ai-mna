@@ -5,7 +5,7 @@ export class ChromiaService {
     signatureProvider: SignatureProvider,
     opName: string,
     args: RawGtv[],
-  ): Promise<string> {
+  ): Promise<TX_STATUS> {
     try {
       await client.signAndSendUniqueTransaction(
         {
@@ -19,10 +19,10 @@ export class ChromiaService {
         },
         signatureProvider,
       );
-      return "Executed";
+      return TX_STATUS.SUCCESS;
     } catch (e) {
       console.log(`Error ${e}`);
-      return `${e}`;
+      return TX_STATUS.FAILED;
     }
   }
   async get_ft4_inventory(
@@ -36,6 +36,18 @@ export class ChromiaService {
   }
   async get_all_shop_listings(client: IClient): Promise<shop_listing[]> {
     const result = await client.query<shop_listing[]>(GET_ALL_SHOP_LISTINGS);
+    return result;
+  }
+  async get_stations(
+    client: IClient,
+    accountId: string,
+  ): Promise<crafting_station[]> {
+    const result = await client.query<crafting_station[]>(
+      GET_CRAFTING_STATIONS,
+      {
+        account_id: this.stringToBuffer(accountId),
+      },
+    );
     return result;
   }
   stringToBuffer(str: string): Buffer {
