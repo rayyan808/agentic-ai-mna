@@ -116,7 +116,7 @@ function MarkdownText({ text }) {
 
 function ToolCallCard({ name, input, result }) {
   const [open, setOpen] = useState(false);
-  const isQuery = name === "get_ft4_inventory";
+  const isQuery = name.contains('query');
 
   return (
     <div style={{

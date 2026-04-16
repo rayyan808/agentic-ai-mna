@@ -9,28 +9,13 @@ Be concise in your reasoning, avoid using more words than necessary. Answer with
 IMPORTANT: You are operating autonomously. Do not ask for confirmation. Execute the goal directly. `;
 const tool_names = {
   //GET_ACCOUNT_ID: "get_account_id",
-  DOES_PLAYER_OWN_ITEM: "does_player_own_item",
-  GET_FT4_INVENTORY: "get_ft4_inventory",
-  GET_ALL_SHOP_LISTINGS: "get_all_shop_listings",
-  BUY_ITEMS: "buy_items",
+  DOES_PLAYER_OWN_ITEM: "query_does_player_own_item",
+  GET_FT4_INVENTORY: "query_get_ft4_inventory",
+  GET_ALL_SHOP_LISTINGS: "query_get_all_shop_listings",
+  BUY_ITEMS: "op_buy_items",
 };
 
 const TOOLS: Anthropic.Tool[] = [
-  /*{
-    name: tool_names.GET_ACCOUNT_ID,
-    description: `This is a query. It returns the associated accountId for a users evm_address. This should be called before calling any query or operation that requires the users accountId.`,
-    input_schema: {
-      type: "object",
-      properties: {
-        evm_address: {
-          type: "string",
-          description:
-            "The users evm_address. This is always provided by the user to the agent.",
-        },
-      },
-      required: ["evm_address"],
-    },
-  },*/
   {
     name: tool_names.DOES_PLAYER_OWN_ITEM,
     description: `This is a query that returns a boolean. true if the user owns atleast one instance of the asset name provided`,

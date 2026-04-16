@@ -1,10 +1,5 @@
-import {
-  IClient,
-  RawGtv,
-  ResponseStatus,
-  SignatureProvider,
-} from "postchain-client";
-import { ops, queries, TX_STATUS } from "./chromia.constants";
+import { IClient, RawGtv, ResponseStatus } from "postchain-client";
+import { queries, TX_STATUS } from "./chromia.constants";
 import {
   crafting_station,
   player_asset_info,
