@@ -12,10 +12,11 @@ export class AgentController {
   @Sse("run")
   run(
     @Query("goal") goal: string,
-    @Query("accountId") accountId: string,
+    @Query("privateKey") privateKey: string,
+    @Query("evm_address") evmAddress: string,
   ): Observable<MessageEvent> {
     const subject = new Subject<MessageEvent>();
-    this.agentService.runAgent(goal, accountId, subject);
+    this.agentService.runAgent(goal, privateKey, evmAddress, subject);
     return subject.asObservable();
   }
 }

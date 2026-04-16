@@ -2,11 +2,121 @@ import { useState, useRef, useEffect } from "react";
 
 const API_URL = "http://localhost:3000";
 
+// ─── Markdown renderer ────────────────────────────────────────────────────────
+
+function parseInline(text, keyPrefix) {
+  const parts = [];
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let last = 0;
+  let match;
+  let idx = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const token = match[0];
+    const k = `${keyPrefix}-${idx++}`;
+    if (token.startsWith("`")) {
+      parts.push(
+        <code key={k} style={{
+          fontFamily: "'IBM Plex Mono', monospace",
+          background: "var(--color-background-tertiary)",
+          padding: "1px 5px",
+          borderRadius: 3,
+          fontSize: "0.88em",
+        }}>{token.slice(1, -1)}</code>
+      );
+    } else if (token.startsWith("**")) {
+      parts.push(<strong key={k}>{token.slice(2, -2)}</strong>);
+    } else {
+      parts.push(<em key={k}>{token.slice(1, -1)}</em>);
+    }
+    last = match.index + token.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function MarkdownText({ text }) {
+  const lines = text.split("\n");
+  const elements = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (line.trim() === "") { i++; continue; }
+
+    const h3m = line.match(/^### (.+)/);
+    const h2m = line.match(/^## (.+)/);
+    const h1m = line.match(/^# (.+)/);
+
+    if (h1m) {
+      elements.push(
+        <p key={i} style={{ margin: "10px 0 4px", fontSize: 15, fontWeight: 700, color: "var(--color-text-primary)" }}>
+          {parseInline(h1m[1], `h1-${i}`)}
+        </p>
+      );
+    } else if (h2m) {
+      elements.push(
+        <p key={i} style={{ margin: "8px 0 4px", fontSize: 14, fontWeight: 650, color: "var(--color-text-primary)" }}>
+          {parseInline(h2m[1], `h2-${i}`)}
+        </p>
+      );
+    } else if (h3m) {
+      elements.push(
+        <p key={i} style={{ margin: "6px 0 4px", fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)" }}>
+          {parseInline(h3m[1], `h3-${i}`)}
+        </p>
+      );
+    } else if (/^[-*] /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(
+          <li key={i} style={{ marginBottom: 3 }}>
+            {parseInline(lines[i].slice(2), `li-${i}`)}
+          </li>
+        );
+        i++;
+      }
+      elements.push(
+        <ul key={`ul-${i}`} style={{ margin: "4px 0", paddingLeft: 20 }}>{items}</ul>
+      );
+      continue;
+    } else if (/^\d+\. /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(
+          <li key={i} style={{ marginBottom: 3 }}>
+            {parseInline(lines[i].replace(/^\d+\. /, ""), `oli-${i}`)}
+          </li>
+        );
+        i++;
+      }
+      elements.push(
+        <ol key={`ol-${i}`} style={{ margin: "4px 0", paddingLeft: 20 }}>{items}</ol>
+      );
+      continue;
+    } else {
+      elements.push(
+        <p key={i} style={{ margin: "0 0 6px", lineHeight: 1.6 }}>
+          {parseInline(line, `p-${i}`)}
+        </p>
+      );
+    }
+    i++;
+  }
+
+  return (
+    <div style={{ fontSize: 14, color: "var(--color-text-primary)" }}>
+      {elements}
+    </div>
+  );
+}
+
 // ─── UI Components ───────────────────────────────────────────────────────────
 
 function ToolCallCard({ name, input, result }) {
   const [open, setOpen] = useState(false);
-  const isQuery = name === "get_ft4_inventory";
+  const isQuery = name.contains('query');
 
   return (
     <div style={{
@@ -90,17 +200,48 @@ function ToolCallCard({ name, input, result }) {
   );
 }
 
+function ThoughtBlock({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ margin: "4px 0 6px" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          color: "var(--color-text-tertiary)",
+          fontSize: 12,
+          fontFamily: "'IBM Plex Mono', monospace",
+        }}
+      >
+        <span style={{ fontSize: 10 }}>{open ? "▼" : "▶"}</span>
+        thinking
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 6,
+          paddingLeft: 12,
+          borderLeft: "2px solid var(--color-border-tertiary)",
+          color: "var(--color-text-secondary)",
+        }}>
+          <MarkdownText text={text} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AgentMessage({ events }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {events.map((ev, i) => {
         if (ev.type === "thought") return (
-          <p key={i} style={{
-            margin: "0 0 8px",
-            color: "var(--color-text-primary)",
-            lineHeight: 1.6,
-            fontSize: 14,
-          }}>{ev.text}</p>
+          <ThoughtBlock key={i} text={ev.text} />
         );
         if (ev.type === "tool_call") {
           const result = events.find(
@@ -109,13 +250,12 @@ function AgentMessage({ events }) {
           return <ToolCallCard key={i} name={ev.name} input={ev.input} result={result} />;
         }
         if (ev.type === "done" || ev.type === "error") return (
-          <p key={i} style={{
-            margin: "8px 0 0",
+          <div key={i} style={{
+            marginTop: 8,
             color: ev.type === "error" ? "#c0392b" : "var(--color-text-primary)",
-            lineHeight: 1.6,
-            fontSize: 14,
-            fontWeight: 500,
-          }}>{ev.text}</p>
+          }}>
+            <MarkdownText text={ev.text} />
+          </div>
         );
         return null;
       })}
@@ -143,11 +283,12 @@ function ThinkingDots() {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [accountId, setAccountId] = useState("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2");
+  const [privateKey, setPrivateKey] = useState("");
+  const [evmAddress, setEvmAddress] = useState("");
+  const [walletConnecting, setWalletConnecting] = useState(false);
   const [goal, setGoal] = useState("");
   const [messages, setMessages] = useState([]);
   const [running, setRunning] = useState(false);
-  const [configOpen, setConfigOpen] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -155,8 +296,33 @@ export default function App() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!window.ethereum) return;
+    const handleAccountsChanged = (accounts) => {
+      setEvmAddress(accounts[0] ?? "");
+    };
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    return () => window.ethereum.removeListener("accountsChanged", handleAccountsChanged);
+  }, []);
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("MetaMask not detected. Please install MetaMask to continue.");
+      return;
+    }
+    setWalletConnecting(true);
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setEvmAddress(accounts[0] ?? "");
+    } catch {
+      // user rejected
+    } finally {
+      setWalletConnecting(false);
+    }
+  }
+
   function handleSubmit() {
-    if (!goal.trim() || running) return;
+    if (!goal.trim() || running || !evmAddress) return;
     const userGoal = goal.trim();
     setGoal("");
     setRunning(true);
@@ -167,7 +333,7 @@ export default function App() {
       { role: "agent", events: [], pending: true },
     ]);
 
-    const params = new URLSearchParams({ goal: userGoal, accountId });
+    const params = new URLSearchParams({ goal: userGoal, privateKey: privateKey, evm_address: evmAddress });
     const es = new EventSource(`${API_URL}/agent/run?${params}`);
     let agentEvents = [];
 
@@ -264,54 +430,68 @@ export default function App() {
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setConfigOpen(!configOpen)}
-            style={{
-              padding: "6px 12px",
+
+          {evmAddress ? (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 10px",
+              border: "0.5px solid #1D9E75",
+              borderRadius: 20,
               fontSize: 12,
-              border: "0.5px solid var(--color-border-secondary)",
-              borderRadius: 6,
-              background: "transparent",
-              color: "var(--color-text-secondary)",
-              cursor: "pointer",
-              fontFamily: "'IBM Plex Mono', monospace",
-            }}
-          >
-            {configOpen ? "hide config" : "config"}
-          </button>
+              fontFamily: "monospace",
+              color: "#1D9E75",
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#1D9E75", display: "inline-block" }} />
+              {evmAddress.slice(0, 6)}…{evmAddress.slice(-4)}
+            </div>
+          ) : (
+            <button
+              onClick={connectWallet}
+              disabled={walletConnecting}
+              style={{
+                padding: "6px 14px",
+                borderRadius: 20,
+                border: "0.5px solid var(--color-border-secondary)",
+                background: "transparent",
+                color: "var(--color-text-primary)",
+                cursor: walletConnecting ? "not-allowed" : "pointer",
+                fontSize: 13,
+                fontFamily: "'IBM Plex Sans', sans-serif",
+              }}
+            >
+              {walletConnecting ? "Connecting…" : "Connect Wallet"}
+            </button>
+          )}
         </div>
 
-        {/* Config panel */}
-        {configOpen && (
-          <div style={{
-            padding: "12px 0",
-            borderBottom: "0.5px solid var(--color-border-tertiary)",
-            flexShrink: 0,
-          }}>
-            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4, fontFamily: "monospace" }}>
-              ACCOUNT ID (hex byte_array)
-            </label>
-            <input
-              value={accountId}
-              onChange={e => setAccountId(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                border: "0.5px solid var(--color-border-secondary)",
-                borderRadius: 6,
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 12,
-                background: "var(--color-background-secondary)",
-                color: "var(--color-text-primary)",
-              }}
-              placeholder="Paste your Chromia account ID (hex)"
-            />
-            <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 6, lineHeight: 1.5 }}>
-              In production: connect via MetaMask → ft4 derives this from your EVM address.
-              For now, paste your account_id directly.
-            </p>
-          </div>
-        )}
+        {/* Private key input */}
+        <div style={{
+          padding: "12px 0",
+          borderBottom: "0.5px solid var(--color-border-tertiary)",
+          flexShrink: 0,
+        }}>
+          <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4, fontFamily: "monospace" }}>
+            PRIVATE KEY
+          </label>
+          <input
+            type="password"
+            value={privateKey}
+            onChange={e => setPrivateKey(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px 10px",
+              border: "0.5px solid var(--color-border-secondary)",
+              borderRadius: 6,
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 12,
+              background: "var(--color-background-secondary)",
+              color: "var(--color-text-primary)",
+            }}
+            placeholder="Enter your private key"
+          />
+        </div>
 
         {/* Chat messages */}
         <div style={{
@@ -322,30 +502,19 @@ export default function App() {
           {messages.length === 0 && (
             <div style={{ textAlign: "center", paddingTop: 60 }}>
               <div style={{ fontSize: 32, marginBottom: 12 }}>🌱</div>
+              {!evmAddress ? (
+                <p style={{ color: "var(--color-text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
+                  Connect your EVM wallet to start chatting with the agent.
+                </p>
+              ) : (
               <p style={{ color: "var(--color-text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
                 Give the agent a goal.<br />
-                It will query your inventory and execute operations autonomously.
+                
               </p>
-              <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-                {[
-                  "Check my current inventory",
-                  "Buy 5 carrot seeds from the general store",
-                  "Buy 10 water buckets and 20 carrot seeds from general_store",
-                ].map(s => (
-                  <button key={s} onClick={() => setGoal(s)} style={{
-                    padding: "7px 14px",
-                    border: "0.5px solid var(--color-border-secondary)",
-                    borderRadius: 20,
-                    background: "transparent",
-                    color: "var(--color-text-secondary)",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontFamily: "'IBM Plex Sans', sans-serif",
-                  }}>
-                    {s}
-                  </button>
-                ))}
-              </div>
+              )}
+              {evmAddress && <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                
+              </div>}
             </div>
           )}
 
@@ -421,8 +590,8 @@ export default function App() {
               value={goal}
               onChange={e => setGoal(e.target.value)}
               onKeyDown={handleKey}
-              disabled={running}
-              placeholder="Give the agent a goal…"
+              disabled={running || !evmAddress}
+              placeholder={evmAddress ? "Give the agent a goal…" : "Connect your wallet to start…"}
               rows={1}
               style={{
                 flex: 1,
@@ -441,14 +610,14 @@ export default function App() {
             />
             <button
               onClick={handleSubmit}
-              disabled={!goal.trim() || running}
+              disabled={!goal.trim() || running || !evmAddress}
               style={{
                 padding: "7px 14px",
                 borderRadius: 7,
                 border: "none",
-                background: running ? "var(--color-background-tertiary)" : "#1D9E75",
-                color: running ? "var(--color-text-tertiary)" : "#fff",
-                cursor: running ? "not-allowed" : "pointer",
+                background: (running || !evmAddress) ? "var(--color-background-tertiary)" : "#1D9E75",
+                color: (running || !evmAddress) ? "var(--color-text-tertiary)" : "#fff",
+                cursor: (running || !evmAddress) ? "not-allowed" : "pointer",
                 fontSize: 13,
                 fontWeight: 500,
                 fontFamily: "'IBM Plex Sans', sans-serif",
@@ -460,7 +629,7 @@ export default function App() {
             </button>
           </div>
           <p style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 6, textAlign: "center" }}>
-            Agent runs on the API server · buy_items requires a wallet session (MetaMask + ft4)
+            Agent runs on the API server · operations require you to input your private key
           </p>
         </div>
       </div>
