@@ -5,9 +5,11 @@ export function normalizeCurrency(value: bigint, currency: string): number {
   switch (currency) {
     case "ALICE": {
       decimals = currencyDecimals.ALICE;
+      break;
     }
     case "BJORN": {
       decimals = currencyDecimals.ALICE;
+      break;
     }
     default: {
       console.log(
