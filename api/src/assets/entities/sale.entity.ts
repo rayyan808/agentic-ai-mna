@@ -1,14 +1,8 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  Timestamp,
-  Index,
-} from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
 
 @Entity()
 @Index(["asset_name"])
-export class Sale {
+export class SaleRecord {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -24,6 +18,6 @@ export class Sale {
   @Column()
   currency: string;
 
-  @Column()
-  timestamp: Timestamp;
+  @Column({ type: "bigint", default: () => "0" })
+  timestamp: number;
 }
