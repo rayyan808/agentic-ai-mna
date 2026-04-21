@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryColumn } from "typeorm";
+import { ListenerState } from "../listener.constants";
 
 @Entity()
 export class ListenerConfig {
@@ -6,5 +7,8 @@ export class ListenerConfig {
   version: number;
 
   @Column()
-  lastProcessedRow: string;
+  lastProcessedRow: number;
+
+  @Column({ type: "enum", enum: ListenerState, default: ListenerState.ready })
+  state: ListenerState;
 }
