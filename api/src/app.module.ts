@@ -2,10 +2,9 @@ import { Module } from "@nestjs/common";
 import { ChatModule } from "./chat/chat.module";
 import { ListenerModule } from "./listener/listener.module";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AssetModule } from "./assets/assets.module";
 @Module({
   imports: [
-    ChatModule,
-    ListenerModule,
     TypeOrmModule.forRoot({
       type: "postgres",
       host: process.env.DB_HOST,
@@ -15,6 +14,9 @@ import { TypeOrmModule } from "@nestjs/typeorm";
       database: process.env.DB_NAME,
       entities: [],
     }),
+    ChatModule,
+    AssetModule,
+    ListenerModule,
   ],
 })
 export class AppModule {}
