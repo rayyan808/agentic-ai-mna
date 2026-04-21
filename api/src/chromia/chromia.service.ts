@@ -1,20 +1,57 @@
-import { IClient, RawGtv, ResponseStatus } from "postchain-client";
-import { queries, TX_STATUS } from "./chromia.constants";
+import {
+  createClient,
+  IClient,
+  RawGtv,
+  ResponseStatus,
+} from "postchain-client";
+import { queries, TransactionResult, TX_STATUS } from "./chromia.constants";
 import {
   crafting_station,
   player_asset_info,
   shop_listing,
 } from "./chromia.dtos";
 import { Injectable } from "@nestjs/common";
-import { Session } from "@chromia/ft4";
+import {
+  createInMemoryEvmKeyStore,
+  createKeyStoreInteractor,
+  Session,
+} from "@chromia/ft4";
+import { makeKeyPair } from "node_modules/postchain-client/built/src/encryption/encryption";
 
 @Injectable()
 export class ChromiaService {
+  client: IClient | null;
+
+  private async getChromiaClient() {
+    if (this.client) return this.client;
+    const nodeUrl = process.env.CHROMIA_NODE_URL;
+    const brid = process.env.CHROMIA_BRID;
+    if (!nodeUrl || !brid) {
+      throw new Error("Set CHROMIA_NODE_URL and CHROMIA_BRID in api/.env");
+    }
+    this.client = await createClient({
+      nodeUrlPool: [nodeUrl],
+      blockchainRid: brid,
+    });
+    return this.client;
+  }
+  async createSession(privateKey: string): Promise<Session> {
+    const _client = await this.getChromiaClient();
+    //Keep da private key out of the model
+    const keyPair = makeKeyPair(privateKey);
+    const evmKeyStore = createInMemoryEvmKeyStore(keyPair);
+    const interactor = createKeyStoreInteractor(_client, evmKeyStore);
+    const accounts = await interactor.getAccounts();
+    const account = accounts[0];
+    const session = await interactor.getSession(account.id);
+    return session;
+  }
+
   async callOperation(
     session: Session,
     opName: string,
     args: RawGtv[],
-  ): Promise<TX_STATUS> {
+  ): Promise<TransactionResult> {
     console.log(`Calling op ${opName}..`);
     try {
       const txReceipt = await session.call({
@@ -25,10 +62,16 @@ export class ChromiaService {
       console.log(`TX got receipt status: ${x.toString()}`);
       console.log(`TX RID: ${txReceipt.receipt.transactionRid}`);
       if (x == ResponseStatus.Rejected) throw "TX Rejected";
-      return TX_STATUS.SUCCESS;
+      return {
+        status: TX_STATUS.SUCCESS,
+        data: this.bufferToString(txReceipt.receipt.transactionRid),
+      };
     } catch (e) {
       console.log(`Error ${e}`);
-      return TX_STATUS.FAILED;
+      return {
+        status: TX_STATUS.FAILED,
+        data: e.toString(),
+      };
     }
   }
   async does_player_own_item(session: Session, asset_name: string) {
@@ -44,7 +87,9 @@ export class ChromiaService {
     });
     return this.bufferToString(bufferAccountId);
   }
-  async get_ft4_inventory(session: Session): Promise<player_asset_info[]> {
+  async get_ft4_inventory(
+    session: Session,
+  ): Promise<{ amount: string; name: string }[]> {
     console.log(`Getting FT4 inventory for ${session.account.id}`);
     try {
       const result = await session.query<player_asset_info[]>(
@@ -53,12 +98,13 @@ export class ChromiaService {
           account_id: session.account.id,
         },
       );
-      console.log(
-        JSON.stringify(result, (_, v) =>
-          typeof v === "bigint" ? v.toString() : v,
-        ),
-      );
-      return result;
+
+      return result.map((v) => {
+        return {
+          name: v.name,
+          amount: v.amount.toString(),
+        };
+      });
     } catch (e) {
       console.log(e);
       return [];

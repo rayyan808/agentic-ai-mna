@@ -9,9 +9,12 @@ const queries = {
 const ops = {
   BUY_ITEMS: "shop.buy_items",
 };
-
+type TransactionResult = {
+  status: TX_STATUS;
+  data: string;
+};
 enum TX_STATUS {
   SUCCESS,
   FAILED,
 }
-export { queries, ops, TX_STATUS };
+export { queries, ops, TX_STATUS, TransactionResult };

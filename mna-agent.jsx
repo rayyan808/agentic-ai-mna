@@ -114,151 +114,83 @@ function MarkdownText({ text }) {
 
 // ─── UI Components ───────────────────────────────────────────────────────────
 
-function ToolCallCard({ name, input, result }) {
-  const [open, setOpen] = useState(false);
-  const isQuery = name.contains('query');
+function ToolCallCard({ name, done }) {
+  const isQuery = name.includes('query');
 
   return (
     <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
       margin: "6px 0",
+      padding: "8px 12px",
       border: "1px solid var(--color-border-tertiary)",
       borderRadius: 8,
-      overflow: "hidden",
       fontFamily: "monospace",
       fontSize: 13,
+      background: "var(--color-background-secondary)",
     }}>
-      <div
-        onClick={() => setOpen(!open)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "8px 12px",
-          cursor: "pointer",
-          background: "var(--color-background-secondary)",
-          userSelect: "none",
-        }}
-      >
-        <span style={{
-          padding: "2px 8px",
-          borderRadius: 4,
-          fontSize: 11,
-          fontFamily: "monospace",
-          background: isQuery ? "#E1F5EE" : "#FAEEDA",
-          color: isQuery ? "#0F6E56" : "#854F0B",
-        }}>
-          {isQuery ? "QUERY" : "OP"}
-        </span>
-        <span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
-          {name}
-        </span>
-        {result?.success && (
-          <span style={{ marginLeft: "auto", color: "#0F6E56", fontSize: 11 }}>
-            ✓ {result.tx_rid ? `tx: ${result.tx_rid.slice(0, 10)}…` : "ok"}
-          </span>
-        )}
-        <span style={{ color: "var(--color-text-tertiary)", fontSize: 11 }}>
-          {open ? "▲" : "▼"}
-        </span>
-      </div>
-
-      {open && (
-        <div style={{ padding: "10px 12px", borderTop: "1px solid var(--color-border-tertiary)" }}>
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>INPUT</span>
-            <pre style={{
-              margin: "4px 0 0",
-              padding: "8px",
-              background: "var(--color-background-tertiary)",
-              borderRadius: 4,
-              fontSize: 12,
-              overflowX: "auto",
-              color: "var(--color-text-primary)",
-            }}>
-              {JSON.stringify(input, null, 2)}
-            </pre>
-          </div>
-          {result && (
-            <div>
-              <span style={{ color: "var(--color-text-secondary)", fontSize: 11 }}>RESULT</span>
-              <pre style={{
-                margin: "4px 0 0",
-                padding: "8px",
-                background: "var(--color-background-tertiary)",
-                borderRadius: 4,
-                fontSize: 12,
-                overflowX: "auto",
-                color: "var(--color-text-primary)",
-              }}>
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ThoughtBlock({ text }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ margin: "4px 0 6px" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          color: "var(--color-text-tertiary)",
-          fontSize: 12,
-          fontFamily: "'IBM Plex Mono', monospace",
-        }}
-      >
-        <span style={{ fontSize: 10 }}>{open ? "▼" : "▶"}</span>
-        thinking
-      </button>
-      {open && (
-        <div style={{
-          marginTop: 6,
-          paddingLeft: 12,
-          borderLeft: "2px solid var(--color-border-tertiary)",
-          color: "var(--color-text-secondary)",
-        }}>
-          <MarkdownText text={text} />
-        </div>
-      )}
+      <span style={{
+        padding: "2px 8px",
+        borderRadius: 4,
+        fontSize: 11,
+        fontFamily: "monospace",
+        background: isQuery ? "#E1F5EE" : "#FAEEDA",
+        color: isQuery ? "#0F6E56" : "#854F0B",
+      }}>
+        {isQuery ? "QUERY" : "OP"}
+      </span>
+      <span style={{ color: "var(--color-text-primary)", fontWeight: 500, flex: 1 }}>
+        {name}
+      </span>
+      <span style={{ fontSize: 11, color: done ? "#0F6E56" : "var(--color-text-tertiary)" }}>
+        {done ? "✓ done" : "running…"}
+      </span>
     </div>
   );
 }
 
 function AgentMessage({ events }) {
+  const finalEvent = events.find(e => e.type === "final");
+  const errorEvent = events.find(e => e.type === "error");
+
+  // Build ordered tool call list from tool_start / tool_end pairs
+  const toolCalls = [];
+  for (const ev of events) {
+    if (ev.type === "tool_start") {
+      toolCalls.push({ name: ev.data, done: false });
+    } else if (ev.type === "tool_end") {
+      for (let i = toolCalls.length - 1; i >= 0; i--) {
+        if (toolCalls[i].name === ev.data && !toolCalls[i].done) {
+          toolCalls[i].done = true;
+          break;
+        }
+      }
+    }
+  }
+
+  const streamText = !finalEvent
+    ? events.filter(e => e.type === "token").map(e => e.data).join("")
+    : null;
+
   return (
     <div style={{ marginBottom: 16 }}>
-      {events.map((ev, i) => {
-        if (ev.type === "thought") return (
-          <ThoughtBlock key={i} text={ev.text} />
-        );
-        if (ev.type === "tool_call") {
-          const result = events.find(
-            (e, j) => j > i && e.type === "tool_result" && e.name === ev.name
-          )?.result;
-          return <ToolCallCard key={i} name={ev.name} input={ev.input} result={result} />;
-        }
-        if (ev.type === "done" || ev.type === "error") return (
-          <div key={i} style={{
-            marginTop: 8,
-            color: ev.type === "error" ? "#c0392b" : "var(--color-text-primary)",
-          }}>
-            <MarkdownText text={ev.text} />
-          </div>
-        );
-        return null;
-      })}
+      {toolCalls.map((tc, i) => (
+        <ToolCallCard key={i} name={tc.name} done={tc.done} />
+      ))}
+      {streamText && (
+        <MarkdownText text={streamText} />
+      )}
+      {finalEvent && (
+        <div style={{ marginTop: toolCalls.length ? 8 : 0 }}>
+          <MarkdownText text={finalEvent.data} />
+        </div>
+      )}
+      {errorEvent && (
+        <div style={{ marginTop: 8, color: "#c0392b" }}>
+          <MarkdownText text={errorEvent.data} />
+        </div>
+      )}
     </div>
   );
 }
@@ -286,11 +218,13 @@ export default function App() {
   const [privateKey, setPrivateKey] = useState("");
   const [evmAddress, setEvmAddress] = useState("");
   const [walletConnecting, setWalletConnecting] = useState(false);
+  const [model, setModel] = useState("claude");
   const [goal, setGoal] = useState("");
   const [messages, setMessages] = useState([]);
   const [running, setRunning] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const sessionId = useRef(crypto.randomUUID());
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -333,11 +267,29 @@ export default function App() {
       { role: "agent", events: [], pending: true },
     ]);
 
-    const params = new URLSearchParams({ goal: userGoal, privateKey: privateKey, evm_address: evmAddress });
-    const es = new EventSource(`${API_URL}/agent/run?${params}`);
+    const params = new URLSearchParams({
+      message: userGoal,
+      privateKey: privateKey,
+      model: model,
+      sessionId: sessionId.current,
+      evmAddress: evmAddress,
+    });
+    const es = new EventSource(`${API_URL}/chat/stream?${params}`);
     let agentEvents = [];
+    let finished = false;
+
+    const addEvent = (event) => {
+      agentEvents = [...agentEvents, event];
+      setMessages(prev => {
+        const copy = [...prev];
+        copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
+        return copy;
+      });
+    };
 
     const finish = () => {
+      if (finished) return;
+      finished = true;
       es.close();
       setMessages(prev => {
         const copy = [...prev];
@@ -348,24 +300,18 @@ export default function App() {
       setTimeout(() => inputRef.current?.focus(), 100);
     };
 
-    es.onmessage = (e) => {
-      const event = JSON.parse(e.data);
-      agentEvents = [...agentEvents, event];
-      setMessages(prev => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
-        return copy;
+    ["token", "tool_start", "tool_end", "final", "error"].forEach(eventType => {
+      es.addEventListener(eventType, (e) => {
+        const data = JSON.parse(e.data);
+        addEvent({ type: eventType, data });
+        if (eventType === "error") finish();
       });
-      if (event.type === "done" || event.type === "error") finish();
-    };
+    });
+
+    es.addEventListener("done", () => finish());
 
     es.onerror = () => {
-      agentEvents = [...agentEvents, { type: "error", text: "Connection to API lost." }];
-      setMessages(prev => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { ...copy[copy.length - 1], events: agentEvents };
-        return copy;
-      });
+      addEvent({ type: "error", data: "Connection to API lost." });
       finish();
     };
   }
@@ -466,31 +412,58 @@ export default function App() {
           )}
         </div>
 
-        {/* Private key input */}
+        {/* Private key + model */}
         <div style={{
           padding: "12px 0",
           borderBottom: "0.5px solid var(--color-border-tertiary)",
           flexShrink: 0,
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-end",
         }}>
-          <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4, fontFamily: "monospace" }}>
-            PRIVATE KEY
-          </label>
-          <input
-            type="password"
-            value={privateKey}
-            onChange={e => setPrivateKey(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "8px 10px",
-              border: "0.5px solid var(--color-border-secondary)",
-              borderRadius: 6,
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 12,
-              background: "var(--color-background-secondary)",
-              color: "var(--color-text-primary)",
-            }}
-            placeholder="Enter your private key"
-          />
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4, fontFamily: "monospace" }}>
+              PRIVATE KEY
+            </label>
+            <input
+              type="password"
+              value={privateKey}
+              onChange={e => setPrivateKey(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                border: "0.5px solid var(--color-border-secondary)",
+                borderRadius: 6,
+                fontFamily: "'IBM Plex Mono', monospace",
+                fontSize: 12,
+                background: "var(--color-background-secondary)",
+                color: "var(--color-text-primary)",
+              }}
+              placeholder="Enter your private key"
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--color-text-secondary)", display: "block", marginBottom: 4, fontFamily: "monospace" }}>
+              MODEL
+            </label>
+            <select
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              style={{
+                padding: "8px 10px",
+                border: "0.5px solid var(--color-border-secondary)",
+                borderRadius: 6,
+                fontFamily: "'IBM Plex Mono', monospace",
+                fontSize: 12,
+                background: "var(--color-background-secondary)",
+                color: "var(--color-text-primary)",
+                cursor: "pointer",
+              }}
+            >
+              <option value="claude">Claude</option>
+              <option value="openAI">OpenAI</option>
+            </select>
+          </div>
         </div>
 
         {/* Chat messages */}
