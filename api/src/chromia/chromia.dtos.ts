@@ -3,6 +3,7 @@ interface player_asset_info {
   amount: bigint;
   [key: string]: any; // Index signature for GTV compatibility
 }
+
 interface shop_listing {
   shop_name: string;
   sold_item: string;
