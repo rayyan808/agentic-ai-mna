@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { AgentModule } from './agent/agent.module';
+import { Module } from "@nestjs/common";
+import { ChatModule } from "./chat/chat.module";
 
 @Module({
-  imports: [AgentModule],
+  imports: [ChatModule],
 })
 export class AppModule {}
