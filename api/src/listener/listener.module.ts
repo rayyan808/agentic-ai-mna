@@ -1,10 +1,16 @@
 import { Module } from "@nestjs/common";
-import { ChromiaService } from "src/chromia/chromia.service";
 import { ListenerService } from "./listener.service";
-import { AssetService } from "src/assets/assets.service";
+import { AssetModule } from "src/assets/assets.module";
+import { ChromiaModule } from "src/chromia/chromia.module";
+import { ListenerConfig } from "./entities/listener.entity";
+import { TypeOrmModule } from "@nestjs/typeorm";
 
 @Module({
-  imports: [AssetService, ChromiaService],
+  imports: [
+    TypeOrmModule.forFeature([ListenerConfig]),
+    AssetModule,
+    ChromiaModule,
+  ],
   providers: [ListenerService],
   // exports: [],
 })
