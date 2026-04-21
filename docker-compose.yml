@@ -1,5 +1,6 @@
 services:
   db:
+    container_name: "agent-db"
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
@@ -10,12 +11,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
   api:
+    container_name: "agent-api"
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -29,11 +31,15 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: mna_agent
+    volumes:
+      - ./api/src:/app/src
+    command: npm run dev
     depends_on:
       db:
         condition: service_healthy
 
   frontend:
+    container_name: "agent-ui"
     build:
       context: ./frontend
       dockerfile: Dockerfile
