@@ -12,8 +12,8 @@ import { asset } from "src/assets/assets.constant";
 @Injectable()
 export class ListenerService {
   version: number;
-  lastProcessedRow: string;
-  page_size: number = 5000;
+  lastProcessedRow: number;
+  page_size: number = 10;
   constructor(
     @InjectRepository(ListenerConfig)
     private listenerRepo: Repository<ListenerConfig>,
@@ -28,38 +28,66 @@ export class ListenerService {
    * On boot up, load this rowid and continue polling through the CRON
    *
    */
-  async onModuleInit() {}
+  async onModuleInit() {
+    this.lastProcessedRow = await this.getLastProcessedRow();
+    console.log(`Last processed row: ${this.lastProcessedRow}`);
+  }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  //@TODO: Use a Message Queue here for cleaner architecture
+  //@TODO: Convert this to atomic transactions, rollback on failure
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
-    //Query `storefront.get_sale_records` via Chromia Client
-    const paginated_results = await this.chromiaService.get_sale_records(
-      this.lastProcessedRow,
-    );
-    await this.updateLastProcessedRow(paginated_results.row_id);
-    const cache: AssetCache = new Map();
-    //For each sale record
-    for (let { asset_name, price, units, currency } of paginated_results.data) {
-      this.appendToCache(
-        cache,
-        { name: asset_name, currency },
-        normalizeCurrency(price, currency),
-        Number(units),
+    console.log(`Processing CRON Sweep...`);
+    try {
+      const paginated_results = await this.chromiaService.get_sale_records(
+        this.lastProcessedRow,
+        this.page_size,
       );
+      const cache: AssetCache = new Map();
+      //For each sale record
+      for (let {
+        asset_name,
+        price,
+        units,
+        currency,
+        timestamp,
+      } of paginated_results.data) {
+        const normalizedPrice = normalizeCurrency(price, currency);
+        const convertedUnits = Number(units);
+        this.appendToCache(
+          cache,
+          { name: asset_name, currency },
+          normalizedPrice,
+          convertedUnits,
+        );
+        await this.assetService.insertSaleRecord({
+          name: asset_name,
+          price: normalizedPrice,
+          currency,
+          units: convertedUnits,
+          timestamp,
+        });
+      }
+      await this.syncCache(cache);
+      await this.updateLastProcessedRow(paginated_results.row_id);
+    } catch (e) {
+      //Abort processing + log an error in the dead letter queue
+      //
     }
   }
-  async updateLastProcessedRow(newRow: string) {
+  async updateLastProcessedRow(newRow: number) {
+    console.log(`Updating last processed row..`);
     const result = await this.listenerRepo.upsert(
-      [
-        {
-          lastProcessedRow: newRow,
-        },
-      ],
-      [],
+      {
+        version: this.version,
+        lastProcessedRow: newRow,
+      },
+      ["version"],
     );
     console.log(`Updated Last processed row: ${result.raw}`);
   }
-  async getLastProcessedRow(): Promise<string> {
+  async getLastProcessedRow(): Promise<number> {
+    console.log(`Getting last processed row...`);
     const exists = await this.listenerRepo.exists({
       where: {
         version: this.version,
@@ -74,9 +102,10 @@ export class ListenerService {
       console.log(`No Listener config detected, creating new..`);
       await this.listenerRepo.save({
         version: this.version,
-        lastProcessedRow: "0",
+        lastProcessedRow: 0,
       });
-      return "0";
+      console.log(`Created new entry with value: 0`);
+      return 0;
     }
   }
   async syncCache(allAssets: AssetCache) {
@@ -94,8 +123,10 @@ export class ListenerService {
     price: number,
     units: number,
   ) {
+    console.log(`Appending ${asset.name} ${asset.currency} to local cache`);
     const assetMap = cache.get(asset.name);
     if (!assetMap) {
+      cache[asset.name] = new Map();
       cache[asset.name][asset.currency] = { price, units };
       return;
     }
