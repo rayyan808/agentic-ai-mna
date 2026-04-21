@@ -1,10 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { ChromiaService } from "src/chromia/chromia.service";
+import { asset_info } from "./listener.constants";
+import { normalizeCurrency } from "./listener.helpers";
+import { todo } from "node:test";
 
 @Injectable()
 export class ListenerService {
-  lastProcessedRow: number;
+  lastProcessedRow: string;
+  page_size: number = 5000;
   constructor(private readonly chromiaService: ChromiaService) {}
   /**.
    * TODO:
@@ -13,16 +17,54 @@ export class ListenerService {
    *
    */
   async onModuleInit() {}
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  process() {
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async process() {
     //Query `storefront.get_sale_records` via Chromia Client
+    const paginated_results = await this.chromiaService.get_sale_records(
+      this.lastProcessedRow,
+    );
+    await this.updateLastProcessedRow(paginated_results.row_id);
+    const cache: Map<string, asset_info> = new Map();
     //For each sale record
-    //SELECT * FROM "asset_prices" WHERE "name" = sale_record.asset_name
-    //edge case: if null just add new entry INSERT INTO "asset_prices" (asset_name, , total_sales = 1)
-    //common case: (pre-existing asset)
-    //UPDATE "asset_prices" WHERE "asset_name" = sale_record.asset_name SET ("twap", "total_sales") (
-    // total_sales += 1
-    // twap = (twap + sale_record.price_per_unit) / total_sales;
-    //);
+    for (let { asset_name, price, units, currency } of paginated_results.data) {
+      this.appendToCache(
+        cache,
+        asset_name,
+        normalizeCurrency(price, currency),
+        Number(units),
+      );
+    }
   }
+  async updateLastProcessedRow(newRow: string) {
+    //Call DB and update
+    !todo;
+  }
+  async getLastProcessedRow(): Promise<string> {
+    //Call DB and return
+    !todo;
+  }
+  async syncCache(cache: Map<string, asset_info>) {
+    for (let [asset_name, asset_info] of cache.entries()) {
+      //Call DB and update
+    }
+  }
+  async appendToCache(
+    cache: Map<string, asset_info>,
+    asset_name: string,
+    price: number,
+    units: number,
+  ) {
+    if (cache.get(asset_name)) {
+      cache[asset_name].summed_price += price;
+      cache[asset_name].summed_units += units;
+    } else {
+      cache[asset_name] = { summed_price: price, summed_units: units };
+    }
+  }
+  /**
+   *
+   *
+   *
+   */
 }
