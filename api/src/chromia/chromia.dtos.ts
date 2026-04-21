@@ -45,7 +45,7 @@ interface location {
 }
 interface paginated_sale_records {
   data: sale_record_dto[];
-  row_id: string;
+  row_id: number;
   [key: string]: any;
 }
 interface sale_record_dto {
@@ -53,6 +53,7 @@ interface sale_record_dto {
   price: bigint;
   units: bigint;
   currency: string;
+  timestamp: number;
 }
 
 export {
