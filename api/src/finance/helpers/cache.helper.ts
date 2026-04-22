@@ -64,9 +64,7 @@ export class CacheHelper {
         rows.push({ asset_name, currency, ...asset_info });
       }
     }
-    console.log(`${JSON.stringify(rows, null, 3)}`);
     await assetService.bulkInsert(rows);
     cacheMap.clear();
-    console.log(`[Cache Helper] Dumped cache into DB`);
   }
 }

@@ -44,13 +44,18 @@ export class FinanceService {
           asset_name,
           currency,
         );
+
         const newEMA = this.emaHelper.calculateEMA(
           price,
           timestamp,
           asset_info.ema,
           asset_info.emaUpdatedAt,
         );
-        console.log(`Got new EMA: ${newEMA} for ${asset_name}`);
+
+        console.log(
+          `${asset_name} was sold for ${price} ${currency}, new EMA: ${newEMA}`,
+        );
+
         this.cacheHelper.setAssetInfo(
           this.assetInfoCache,
           asset_name,
@@ -71,7 +76,6 @@ export class FinanceService {
   }
 
   async setLastProcessedAt(timestamp: number) {
-    console.log(`[Finance] Setting last updated to: ${timestamp}`);
     await this.financeRepo.upsert(
       [{ version: this.version, latestTimestamp: timestamp }],
       ["version"],
