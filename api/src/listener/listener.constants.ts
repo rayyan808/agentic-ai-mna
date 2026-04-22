@@ -1,4 +1,4 @@
-export type asset_info = { summed_price: number; summed_units: number };
+import { asset_info } from "src/assets/assets.constant";
 
 export type AssetCache = Map<string, Map<string, asset_info>>;
 

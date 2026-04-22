@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { ChromiaService } from "src/chromia/chromia.service";
-import { asset_info, AssetCache } from "./listener.constants";
+import { AssetCache } from "./listener.constants";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ListenerConfig } from "./entities/listener.entity";
 import { Repository } from "typeorm";
@@ -11,7 +11,7 @@ import { asset } from "src/assets/assets.constant";
 @Injectable()
 export class ListenerService {
   version: number;
-  page_size: number = 1;
+  page_size: number = 5;
 
   cache: AssetCache = new Map();
   constructor(
