@@ -3,7 +3,7 @@ export interface asset {
   currency: string;
 }
 export interface Sale {
-  name: string;
+  asset_name: string;
   currency: string;
   price: number;
   units: number;

@@ -18,6 +18,7 @@ export class AssetService {
     await this.saleRepo.insert({
       ...data,
     });
+    return;
   }
   async updateAsset(
     assetName: string,
