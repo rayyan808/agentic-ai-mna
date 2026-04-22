@@ -19,12 +19,12 @@ export class AssetService {
     return res;
   }
 
-  async insertNewAsset(asset_name: string, currency: string) {
+  async insertNewAsset(asset_name: string, currency: string, ema: number) {
     await this.assetRepo
       .createQueryBuilder()
       .insert()
       .into(AssetInfo)
-      .values({ asset_name, currency })
+      .values({ asset_name, currency, ema })
       .orIgnore()
       .execute();
   }
@@ -33,12 +33,14 @@ export class AssetService {
     currency: string,
     assetInfo: asset_info,
   ) {
-    console.log(
-      `Updating asset ${assetName} with ${JSON.stringify(assetInfo)}`,
-    );
     await this.assetRepo.upsert(
       [{ asset_name: assetName, currency: currency, ...assetInfo }],
       ["asset_name", "currency"],
     );
+  }
+
+  async bulkInsert(assets: AssetInfo[]) {
+    console.log(`Bulk inserting ${assets.length} assets..`);
+    await this.assetRepo.upsert(assets, ["asset_name", "currency"]);
   }
 }

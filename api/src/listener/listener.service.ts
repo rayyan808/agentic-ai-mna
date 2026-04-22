@@ -25,7 +25,6 @@ export class ListenerService {
   //@TODO: Convert this to atomic transactions, rollback on failure
   @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
-    console.log(`Processing CRON Sweep...`);
     const lastProcessedRow = await this.getLastProcessedRow();
     try {
       const paginated_results = await this.chromiaService.get_sale_records(
@@ -33,7 +32,7 @@ export class ListenerService {
         this.page_size,
       );
       if (lastProcessedRow == paginated_results.row_id) {
-        console.log(`No new records to process.`);
+        console.log(`[Listener] No new records to process.`);
         return;
       }
       //For each sale record
@@ -44,7 +43,11 @@ export class ListenerService {
         currency,
         timestamp,
       } of paginated_results.data) {
-        await this.assetService.insertNewAsset(asset_name, currency);
+        await this.assetService.insertNewAsset(
+          asset_name,
+          currency,
+          Number(price),
+        );
         await this.saleRecordService.insert({
           asset_name,
           price: Number(price),
@@ -57,12 +60,10 @@ export class ListenerService {
       await this.updateLastProcessedRow(paginated_results.row_id);
     } catch (e) {
       //Abort processing + log an error in the dead letter queue
-      console.log("Error processing...");
-      console.log(e);
+      console.log(`[Listener] Error processing... \n ${e}`);
     }
   }
   async updateLastProcessedRow(newRow: number) {
-    console.log(`Updating last processed row..`);
     await this.listenerRepo.upsert(
       {
         version: this.version,
@@ -70,10 +71,9 @@ export class ListenerService {
       },
       ["version"],
     );
-    console.log(`Updated Last processed row to ${newRow}`);
+    console.log(`[Listener] Updated Last processed row to ${newRow}`);
   }
   async getLastProcessedRow(): Promise<number> {
-    console.log(`Getting last processed row...`);
     const exists = await this.listenerRepo.exists({
       where: {
         version: this.version,
@@ -85,12 +85,12 @@ export class ListenerService {
       });
       return config.lastProcessedRow;
     } else {
-      console.log(`No Listener config detected, creating new..`);
+      console.log(`[Listener] No Listener config detected, creating new..`);
       await this.listenerRepo.save({
         version: this.version,
         lastProcessedRow: 0,
       });
-      console.log(`Created new entry with value: 0`);
+      console.log(`[Listener] Created new entry with value: 0`);
       return 0;
     }
   }
