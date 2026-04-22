@@ -11,6 +11,6 @@ export class AssetInfo {
   @Column()
   ema: number;
 
-  @Column()
+  @Column({ type: "bigint", nullable: true })
   emaUpdatedAt: number;
 }
