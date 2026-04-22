@@ -9,8 +9,8 @@ export class AssetInfo {
   currency: string;
 
   @Column()
-  summed_price: number;
+  ema: number;
 
   @Column()
-  summed_units: number;
+  emaUpdatedAt: number;
 }

@@ -1,4 +1,4 @@
-export type asset_info = { summed_price: number; summed_units: number };
+export type asset_info = { ema: number; emaUpdatedAt: number };
 
 export interface asset {
   name: string;
