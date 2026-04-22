@@ -8,11 +8,11 @@ import { ListenerConfig } from "./entities/listener.entity";
 import { Repository } from "typeorm";
 import { AssetService } from "src/assets/assets.service";
 import { asset } from "src/assets/assets.constant";
+import { last } from "rxjs";
 
 @Injectable()
 export class ListenerService {
   version: number;
-  lastProcessedRow: number;
   page_size: number = 10;
   constructor(
     @InjectRepository(ListenerConfig)
@@ -28,21 +28,23 @@ export class ListenerService {
    * On boot up, load this rowid and continue polling through the CRON
    *
    */
-  async onModuleInit() {
-    this.lastProcessedRow = await this.getLastProcessedRow();
-    console.log(`Last processed row: ${this.lastProcessedRow}`);
-  }
+  async onModuleInit() {}
 
   //@TODO: Use a Message Queue here for cleaner architecture
   //@TODO: Convert this to atomic transactions, rollback on failure
   @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
     console.log(`Processing CRON Sweep...`);
+    const lastProcessedRow = await this.getLastProcessedRow();
     try {
       const paginated_results = await this.chromiaService.get_sale_records(
-        this.lastProcessedRow,
+        lastProcessedRow,
         this.page_size,
       );
+      if (lastProcessedRow == paginated_results.row_id) {
+        console.log(`No new records to process.`);
+        return;
+      }
       const cache: AssetCache = new Map();
       //For each sale record
       for (let {
@@ -52,17 +54,17 @@ export class ListenerService {
         currency,
         timestamp,
       } of paginated_results.data) {
-        const normalizedPrice = normalizeCurrency(price, currency);
+        // const normalizedPrice = normalizeCurrency(price, currency);
         const convertedUnits = Number(units);
         this.appendToCache(
           cache,
           { name: asset_name, currency },
-          normalizedPrice,
+          Number(price),
           convertedUnits,
         );
         await this.assetService.insertSaleRecord({
-          name: asset_name,
-          price: normalizedPrice,
+          asset_name,
+          price: Number(price),
           currency,
           units: convertedUnits,
           timestamp,
@@ -72,6 +74,8 @@ export class ListenerService {
       await this.updateLastProcessedRow(paginated_results.row_id);
     } catch (e) {
       //Abort processing + log an error in the dead letter queue
+      console.log("Error processing...");
+      console.log(e);
       //
     }
   }
@@ -84,7 +88,7 @@ export class ListenerService {
       },
       ["version"],
     );
-    console.log(`Updated Last processed row: ${result.raw}`);
+    console.log(`Updated Last processed row to ${newRow}`);
   }
   async getLastProcessedRow(): Promise<number> {
     console.log(`Getting last processed row...`);
@@ -110,7 +114,6 @@ export class ListenerService {
   }
   async syncCache(allAssets: AssetCache) {
     console.log(`Syncing cache to DB..`);
-    console.log(JSON.stringify(allAssets));
     for (let [asset_name, assetCaches] of allAssets.entries()) {
       for (let [currency, asset_info] of assetCaches.entries()) {
         await this.assetService.updateAsset(asset_name, currency, asset_info);

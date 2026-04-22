@@ -1,14 +1,14 @@
 import { currencyDecimals } from "./listener.constants";
 
 export function normalizeCurrency(value: bigint, currency: string): number {
-  let decimals = 1;
+  let decimals = 0;
   switch (currency) {
     case "ALICE": {
       decimals = currencyDecimals.ALICE;
       break;
     }
     case "BJORN": {
-      decimals = currencyDecimals.ALICE;
+      decimals = currencyDecimals.BJORN;
       break;
     }
     default: {
@@ -17,6 +17,9 @@ export function normalizeCurrency(value: bigint, currency: string): number {
       );
     }
   }
-  const scaledDown = value / BigInt(10 ^ decimals);
+  const scaledDown = Number(value) / (10 ^ decimals);
+  console.log(
+    `Normalizing ${currency}: ${value.toString()} to: ${scaledDown} `,
+  );
   return Number(scaledDown);
 }
