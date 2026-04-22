@@ -43,4 +43,13 @@ export class CacheHelper {
     );
     return asset_info;
   }
+
+  setAssetInfo(
+    cacheMap: Map<string, Map<string, asset_info>>,
+    asset_name: string,
+    currency: string,
+    asset_info: asset_info,
+  ) {
+    cacheMap.get(asset_name).set(currency, asset_info);
+  }
 }

@@ -27,14 +27,14 @@ export class FinanceService {
     this.assetInfoCache = new Map();
   }
 
-  //Go through unprocessed sale records, apply
-
   @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
     const lastProcessedAt = await this.getLastProcessedAt();
 
     const records =
       await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
+    if (records.length == 0) return;
+    const currentTime = Date.now();
     for (let { asset_name, currency, price, timestamp } of records) {
       //Check if we have at cache, otherwise pull from DB
       let asset_info = await this.cacheHelper.cacheHitOrPopulate(
@@ -43,15 +43,27 @@ export class FinanceService {
         asset_name,
         currency,
       );
-      this.emaHelper.calculateEMA(
+      const newEMA = this.emaHelper.calculateEMA(
         price,
         timestamp,
         asset_info.ema,
         asset_info.emaUpdatedAt,
       );
-    }
-  }
 
+      this.cacheHelper.setAssetInfo(this.assetInfoCache, asset_name, currency, {
+        ema: newEMA,
+        emaUpdatedAt: currentTime,
+      });
+    }
+    await this.setLastProcessedAt(currentTime);
+  }
+  async setLastProcessedAt(timestamp: number) {
+    console.log(`[Finance] Setting last updated to: ${timestamp}`);
+    await this.financeRepo.upsert(
+      [{ version: this.version, latestTimestamp: timestamp }],
+      ["version"],
+    );
+  }
   async getLastProcessedAt() {
     const config = await this.financeRepo.find({
       where: {
