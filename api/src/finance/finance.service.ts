@@ -29,34 +29,48 @@ export class FinanceService {
 
   @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
-    const lastProcessedAt = await this.getLastProcessedAt();
-
-    const records =
-      await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
-    if (records.length == 0) return;
-    const currentTime = Date.now();
-    for (let { asset_name, currency, price, timestamp } of records) {
-      //Check if we have at cache, otherwise pull from DB
-      let asset_info = await this.cacheHelper.cacheHitOrPopulate(
-        this.assetService,
-        this.assetInfoCache,
-        asset_name,
-        currency,
-      );
-      const newEMA = this.emaHelper.calculateEMA(
-        price,
-        timestamp,
-        asset_info.ema,
-        asset_info.emaUpdatedAt,
-      );
-
-      this.cacheHelper.setAssetInfo(this.assetInfoCache, asset_name, currency, {
-        ema: newEMA,
-        emaUpdatedAt: currentTime,
-      });
+    try {
+      const lastProcessedAt = await this.getLastProcessedAt();
+      console.log(`[Finance] Last Processed Timestamp: ${lastProcessedAt}`);
+      const records =
+        await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
+      console.log(`Got ${records.length} records..`);
+      if (records.length == 0) return;
+      let latestTimestamp = lastProcessedAt;
+      for (let { asset_name, currency, price, timestamp } of records) {
+        //Check if we have at cache, otherwise pull from DB
+        let asset_info = await this.cacheHelper.cacheHitOrPopulate(
+          this.assetService,
+          this.assetInfoCache,
+          asset_name,
+          currency,
+        );
+        const newEMA = this.emaHelper.calculateEMA(
+          price,
+          timestamp,
+          asset_info.ema,
+          asset_info.emaUpdatedAt,
+        );
+        console.log(`Got new EMA: ${newEMA} for ${asset_name}`);
+        this.cacheHelper.setAssetInfo(
+          this.assetInfoCache,
+          asset_name,
+          currency,
+          {
+            ema: newEMA,
+            emaUpdatedAt: timestamp,
+          },
+        );
+        if (timestamp > latestTimestamp) latestTimestamp = timestamp;
+      }
+      await this.cacheHelper.dumpCache(this.assetService, this.assetInfoCache);
+      await this.setLastProcessedAt(latestTimestamp);
+    } catch (e) {
+      //TODO: Need a Dead letter Queue
+      console.log(`[Finance] Error processing... \n ${e}`);
     }
-    await this.setLastProcessedAt(currentTime);
   }
+
   async setLastProcessedAt(timestamp: number) {
     console.log(`[Finance] Setting last updated to: ${timestamp}`);
     await this.financeRepo.upsert(
@@ -65,6 +79,7 @@ export class FinanceService {
     );
   }
   async getLastProcessedAt() {
+    console.log(`[Finance] Getting last processed at timestamp..`);
     const config = await this.financeRepo.find({
       where: {
         version: this.version,
