@@ -18,6 +18,16 @@ export class AssetService {
     });
     return res;
   }
+
+  async insertNewAsset(asset_name: string, currency: string) {
+    await this.assetRepo
+      .createQueryBuilder()
+      .insert()
+      .into(AssetInfo)
+      .values({ asset_name, currency })
+      .orIgnore()
+      .execute();
+  }
   async updateAsset(
     assetName: string,
     currency: string,

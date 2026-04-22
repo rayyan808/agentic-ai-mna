@@ -44,6 +44,7 @@ export class ListenerService {
         currency,
         timestamp,
       } of paginated_results.data) {
+        await this.assetService.insertNewAsset(asset_name, currency);
         await this.saleRecordService.insert({
           asset_name,
           price: Number(price),
