@@ -2,18 +2,18 @@ import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { ChromiaService } from "src/chromia/chromia.service";
 import { asset_info, AssetCache } from "./listener.constants";
-import { normalizeCurrency } from "./listener.helpers";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ListenerConfig } from "./entities/listener.entity";
 import { Repository } from "typeorm";
 import { AssetService } from "src/assets/assets.service";
 import { asset } from "src/assets/assets.constant";
-import { last } from "rxjs";
 
 @Injectable()
 export class ListenerService {
   version: number;
-  page_size: number = 10;
+  page_size: number = 1;
+
+  cache: AssetCache = new Map();
   constructor(
     @InjectRepository(ListenerConfig)
     private listenerRepo: Repository<ListenerConfig>,
@@ -45,7 +45,6 @@ export class ListenerService {
         console.log(`No new records to process.`);
         return;
       }
-      const cache: AssetCache = new Map();
       //For each sale record
       for (let {
         asset_name,
@@ -57,7 +56,6 @@ export class ListenerService {
         // const normalizedPrice = normalizeCurrency(price, currency);
         const convertedUnits = Number(units);
         this.appendToCache(
-          cache,
           { name: asset_name, currency },
           Number(price),
           convertedUnits,
@@ -70,8 +68,11 @@ export class ListenerService {
           timestamp,
         });
       }
-      await this.syncCache(cache);
+      console.log(`Built cache \n ${JSON.stringify(this.cache, null, 3)}`);
+      await this.syncCache();
       await this.updateLastProcessedRow(paginated_results.row_id);
+
+      this.cache = new Map();
     } catch (e) {
       //Abort processing + log an error in the dead letter queue
       console.log("Error processing...");
@@ -112,34 +113,37 @@ export class ListenerService {
       return 0;
     }
   }
-  async syncCache(allAssets: AssetCache) {
-    console.log(`Syncing cache to DB..`);
-    for (let [asset_name, assetCaches] of allAssets.entries()) {
-      for (let [currency, asset_info] of assetCaches.entries()) {
+  async syncCache() {
+    console.log(`Syncing cache with ${this.cache.size} entries to DB..`);
+
+    for (let [asset_name, asset_map] of this.cache.entries()) {
+      console.log(`Iterating map for: ${asset_name}`);
+      for (let [currency, asset_info] of asset_map.entries()) {
+        console.log(
+          `Found currency ${currency} for ${asset_name}, storing to DB..`,
+        );
         await this.assetService.updateAsset(asset_name, currency, asset_info);
       }
     }
   }
-  async appendToCache(
-    cache: AssetCache,
-    asset: asset,
-    price: number,
-    units: number,
-  ) {
+  async appendToCache(asset: asset, price: number, units: number) {
     console.log(`Appending ${asset.name} ${asset.currency} to local cache`);
-    const assetMap = cache.get(asset.name);
+
+    let assetMap = this.cache.get(asset.name);
     if (!assetMap) {
-      cache[asset.name] = new Map();
-      cache[asset.name][asset.currency] = { price, units };
-      return;
+      assetMap = new Map();
+      this.cache.set(asset.name, assetMap);
     }
-    if (cache.get(assetMap[asset.currency])) {
-      assetMap[asset.currency].summed_price += price;
-      assetMap[asset.currency].summed_units += units;
-      return;
+
+    const existing = assetMap.get(asset.currency);
+    if (existing) {
+      existing.summed_price += price;
+      existing.summed_units += units;
     } else {
-      cache[asset.name][asset.currency] = { price, units };
-      return;
+      assetMap.set(asset.currency, {
+        summed_price: price,
+        summed_units: units,
+      });
     }
   }
 }
