@@ -1,12 +1,12 @@
 export class EMA {
   halfLife: number;
-  alpha: number = 3_600_000; //1 hour in UNIX epoch miliseconds
 
   constructor(timeInMS: number) {
-    this.alpha = timeInMS;
+    this.halfLife = timeInMS;
   }
+
   private getAlpha(timeElapsedInMS: number) {
-    return 2 / (timeElapsedInMS + 1);
+    return 1 - Math.exp(-timeElapsedInMS / this.halfLife);
   }
 
   //EMA = (recent_sold_at_price × α) + (EMA × (1 − α))
