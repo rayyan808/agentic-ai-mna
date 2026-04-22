@@ -31,10 +31,7 @@ export class ListenerService {
         lastProcessedRow,
         this.page_size,
       );
-      if (lastProcessedRow == paginated_results.row_id) {
-        console.log(`[Listener] No new records to process.`);
-        return;
-      }
+      if (lastProcessedRow == paginated_results.row_id) return;
       //For each sale record
       for (let {
         asset_name,
