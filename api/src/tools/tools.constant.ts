@@ -21,6 +21,7 @@ const tool_descriptions = {
       price_currency is the name of the FT4 token we must pay in 
     `,
   BUY_ITEMS: `Purchase items from a named shop. Specify the shop name and a map of item names to quantities. This is an operation and therefore returns only a transaction ID on success`,
+  GET_ASSET_FINANCIAL_DATA: `This is a query. For an asset, get it's financial data such as Exponential Moving Average in supported currencies`,
 };
 const tool_names = {
   //GET_ACCOUNT_ID: "get_account_id",
@@ -28,6 +29,7 @@ const tool_names = {
   GET_FT4_INVENTORY: "query_get_ft4_inventory",
   GET_ALL_SHOP_LISTINGS: "query_get_all_shop_listings",
   BUY_ITEMS: "op_buy_items",
+  GET_ASSET_FINANCIAL_DATA: "get_asset_financial_data",
 };
 
 export { SYSTEM_PROMPT, tool_names, tool_descriptions };
