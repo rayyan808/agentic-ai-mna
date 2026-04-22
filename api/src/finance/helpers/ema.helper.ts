@@ -18,7 +18,9 @@ export class EMA {
     emaUpatedAt: number | null,
   ) {
     if (ema && emaUpatedAt) {
-      const alpha = this.getAlpha(Math.max(0, purchasedAt - emaUpatedAt));
+      const elapsed = purchasedAt - emaUpatedAt;
+      if (elapsed <= 0) return ema;
+      const alpha = this.getAlpha(elapsed);
       const newEMA = price * alpha + ema * (1 - alpha);
       return newEMA;
     } else {

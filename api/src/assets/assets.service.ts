@@ -19,12 +19,17 @@ export class AssetService {
     return res;
   }
 
-  async insertNewAsset(asset_name: string, currency: string, ema: number) {
+  async insertNewAsset(
+    asset_name: string,
+    currency: string,
+    ema: number,
+    emaUpdatedAt: number,
+  ) {
     await this.assetRepo
       .createQueryBuilder()
       .insert()
       .into(AssetInfo)
-      .values({ asset_name, currency, ema })
+      .values({ asset_name, currency, ema, emaUpdatedAt })
       .orIgnore()
       .execute();
   }

@@ -10,7 +10,7 @@ import { SaleRecordService } from "src/sale_record/sale_record.service";
 @Injectable()
 export class ListenerService {
   version: number;
-  page_size: number = 5;
+  page_size: number = 50;
 
   constructor(
     @InjectRepository(ListenerConfig)
@@ -47,6 +47,7 @@ export class ListenerService {
           asset_name,
           currency,
           Number(price),
+          timestamp,
         );
         await this.saleRecordService.insert({
           asset_name,

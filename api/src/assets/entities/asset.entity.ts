@@ -8,7 +8,7 @@ export class AssetInfo {
   @PrimaryColumn()
   currency: string;
 
-  @Column()
+  @Column({ type: "double precision" })
   ema: number;
 
   @Column({ type: "bigint", nullable: true })
