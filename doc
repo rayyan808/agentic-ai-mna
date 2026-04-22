@@ -1,0 +1,18 @@
+New Asset listed on Blockchain -> Asset sold -> Sale Record Created
+
+Sale_Record -> Listener -> Create new Asset Entry, use price sold as EMA, store EMA
+
+Same asset sold again -> Listener -> Get current EMA, use sold at price to calculate new EMA, store EMA
+
+Batch of same asset sales -> During the cacheing phase, calculate new EMA on a rolling basis
+
+
+Components:
+Listener Module: Polls Blockchain for all new asset sales, stores them into SaleRecord Table
+Finance Module: Sweeps through new sale records and produces meaningful financial data (Exponential Moving Average) per asset class, stores this into 'AssetInfo' table 
+
+Asset Module: Interface for managing AssetInfo in the database
+Agent Module: Agentic AI Harness to interact with tools and stream responses to Chat
+Tool Module: Tool schemas and wrappers that an agent can use to perform tasks
+Chromia Module: Interface for querying and performing operations with the Chromia L1 Blockchain
+Chat Module: Controller to interface with UI Chatbox using SSE and Agent response chunk streaming

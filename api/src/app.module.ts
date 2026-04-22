@@ -5,8 +5,10 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AssetModule } from "./assets/assets.module";
 import { AssetInfo } from "./assets/entities/asset.entity";
 import { ListenerConfig } from "./listener/entities/listener.entity";
-import { SaleRecord } from "./assets/entities/sale.entity";
+import { SaleRecord } from "./sale_record/sale.entity";
 import { ScheduleModule } from "@nestjs/schedule";
+import { FinanceModule } from "./finance/finance.module";
+import { FinanceConfig } from "./finance/finance.entity";
 
 @Module({
   imports: [
@@ -18,12 +20,13 @@ import { ScheduleModule } from "@nestjs/schedule";
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [AssetInfo, SaleRecord, ListenerConfig],
+      entities: [AssetInfo, SaleRecord, ListenerConfig, FinanceConfig],
       synchronize: true,
     }),
     ChatModule,
     AssetModule,
     ListenerModule,
+    FinanceModule,
   ],
 })
 export class AppModule {}

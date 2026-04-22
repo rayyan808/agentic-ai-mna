@@ -134,7 +134,6 @@ export class ChromiaService {
     cursor: number,
     page_size: number,
   ): Promise<paginated_sale_records> {
-    console.log(`Querying get_sale_records..`);
     const client = await this.getChromiaClient();
     const result = await client.query<paginated_sale_records>(
       queries.GET_SALE_RECORDS,

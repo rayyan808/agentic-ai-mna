@@ -2,46 +2,50 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AssetInfo } from "./entities/asset.entity";
 import { Repository } from "typeorm";
-import { SaleRecord } from "./entities/sale.entity";
-import { asset_info, Sale } from "./assets.constant";
+import { asset_info } from "./assets.constant";
 
 @Injectable()
 export class AssetService {
   constructor(
     @InjectRepository(AssetInfo) private assetRepo: Repository<AssetInfo>,
-    @InjectRepository(SaleRecord) private saleRepo: Repository<Sale>,
   ) {}
-
-  async insertSaleRecord(data: Sale) {
-    console.log(`Creating Sale Record for ${JSON.stringify(data)}..`);
-    await this.saleRepo.insert({
-      ...data,
+  async getAssetInfo(asset_name: string, currency: string): Promise<AssetInfo> {
+    const res = await this.assetRepo.findOneOrFail({
+      where: {
+        asset_name,
+        currency,
+      },
     });
-    return;
+    return res;
+  }
+
+  async insertNewAsset(
+    asset_name: string,
+    currency: string,
+    ema: number,
+    emaUpdatedAt: number,
+  ) {
+    await this.assetRepo
+      .createQueryBuilder()
+      .insert()
+      .into(AssetInfo)
+      .values({ asset_name, currency, ema, emaUpdatedAt })
+      .orIgnore()
+      .execute();
   }
   async updateAsset(
     assetName: string,
     currency: string,
     assetInfo: asset_info,
   ) {
-    console.log(`Updating asset ${assetName}`);
-    const row = await this.assetRepo.findOne({
-      where: { asset_name: assetName, currency: currency },
-    });
-    if (row) {
-      //exists
-      row.summed_price += assetInfo.summed_price;
-      row.summed_units += assetInfo.summed_units;
-      await this.assetRepo.save(row);
-      console.log(`New TWAP: ${row.summed_price / row.summed_units}`);
-    } else {
-      console.log(`Asset doesnt exist, creating..`);
-      await this.assetRepo.insert({
-        asset_name: assetName,
-        currency: currency,
-        summed_price: assetInfo.summed_price,
-        summed_units: assetInfo.summed_units,
-      });
-    }
+    await this.assetRepo.upsert(
+      [{ asset_name: assetName, currency: currency, ...assetInfo }],
+      ["asset_name", "currency"],
+    );
+  }
+
+  async bulkInsert(assets: AssetInfo[]) {
+    console.log(`Bulk inserting ${assets.length} assets..`);
+    await this.assetRepo.upsert(assets, ["asset_name", "currency"]);
   }
 }

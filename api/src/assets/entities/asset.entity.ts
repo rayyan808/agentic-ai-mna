@@ -8,9 +8,9 @@ export class AssetInfo {
   @PrimaryColumn()
   currency: string;
 
-  @Column()
-  summed_price: number;
+  @Column({ type: "double precision" })
+  ema: number;
 
-  @Column()
-  summed_units: number;
+  @Column({ type: "bigint", nullable: true })
+  emaUpdatedAt: number;
 }

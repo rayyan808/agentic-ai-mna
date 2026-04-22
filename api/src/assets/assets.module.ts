@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { AssetService } from "./assets.service";
-import { SaleRecord } from "./entities/sale.entity";
+import { SaleRecord } from "../sale_record/sale.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AssetInfo } from "./entities/asset.entity";
 
