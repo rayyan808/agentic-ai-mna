@@ -54,6 +54,7 @@ interface sale_record_dto {
   units: bigint;
   currency: string;
   timestamp: number;
+  rowid: number;
 }
 
 export {

@@ -132,7 +132,7 @@ export class ChromiaService {
   }
   async get_sale_records(
     cursor: number,
-    page_size: number = 1000,
+    page_size: number,
   ): Promise<paginated_sale_records> {
     console.log(`Querying get_sale_records..`);
     const client = await this.getChromiaClient();
