@@ -5,7 +5,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AssetModule } from "./assets/assets.module";
 import { AssetInfo } from "./assets/entities/asset.entity";
 import { ListenerConfig } from "./listener/entities/listener.entity";
-import { SaleRecord } from "./listener/entities/sale.entity";
+import { SaleRecord } from "./sale_record/sale.entity";
 import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
