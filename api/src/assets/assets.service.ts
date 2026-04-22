@@ -2,23 +2,15 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AssetInfo } from "./entities/asset.entity";
 import { Repository } from "typeorm";
-import { SaleRecord } from "./entities/sale.entity";
-import { asset_info, Sale } from "./assets.constant";
+import { SaleRecord } from "../listener/entities/sale.entity";
+import { asset_info } from "./assets.constant";
 
 @Injectable()
 export class AssetService {
   constructor(
     @InjectRepository(AssetInfo) private assetRepo: Repository<AssetInfo>,
-    @InjectRepository(SaleRecord) private saleRepo: Repository<Sale>,
   ) {}
 
-  async insertSaleRecord(data: Sale) {
-    console.log(`Creating Sale Record for ${JSON.stringify(data)}..`);
-    await this.saleRepo.insert({
-      ...data,
-    });
-    return;
-  }
   async updateAsset(
     assetName: string,
     currency: string,

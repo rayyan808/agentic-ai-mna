@@ -7,6 +7,7 @@ import { ListenerConfig } from "./entities/listener.entity";
 import { Repository } from "typeorm";
 import { AssetService } from "src/assets/assets.service";
 import { asset } from "src/assets/assets.constant";
+import { SaleRecordService } from "./sale_record/sale_record.service";
 
 @Injectable()
 export class ListenerService {
@@ -19,6 +20,7 @@ export class ListenerService {
     private listenerRepo: Repository<ListenerConfig>,
     private readonly assetService: AssetService,
     private readonly chromiaService: ChromiaService,
+    private readonly saleRecordService: SaleRecordService,
   ) {
     this.version = parseInt(process.env.LISTENER_VERSION) ?? 1;
   }
@@ -60,7 +62,7 @@ export class ListenerService {
           Number(price),
           convertedUnits,
         );
-        await this.assetService.insertSaleRecord({
+        await this.saleRecordService.insert({
           asset_name,
           price: Number(price),
           currency,
