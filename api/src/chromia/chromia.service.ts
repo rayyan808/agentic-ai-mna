@@ -7,10 +7,11 @@ import {
 import { queries, TransactionResult, TX_STATUS } from "./chromia.constants";
 import {
   crafting_station,
+  paginated_sale_records,
   player_asset_info,
   shop_listing,
 } from "./chromia.dtos";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Scope } from "@nestjs/common";
 import {
   createInMemoryEvmKeyStore,
   createKeyStoreInteractor,
@@ -18,7 +19,7 @@ import {
 } from "@chromia/ft4";
 import { makeKeyPair } from "node_modules/postchain-client/built/src/encryption/encryption";
 
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class ChromiaService {
   client: IClient | null;
 
@@ -129,6 +130,23 @@ export class ChromiaService {
     );
     return result;
   }
+  async get_sale_records(
+    cursor: number,
+    page_size: number,
+  ): Promise<paginated_sale_records> {
+    console.log(`Querying get_sale_records..`);
+    const client = await this.getChromiaClient();
+    const result = await client.query<paginated_sale_records>(
+      queries.GET_SALE_RECORDS,
+      {
+        cursor: [page_size, cursor],
+      },
+    );
+    console.log(
+      `Got result length: ${result.data.length} and cursor: ${result.row_id}`,
+    );
+    return result;
+  }
   stringToBuffer(str: string): Buffer {
     return Buffer.from(str, "hex");
   }
@@ -139,27 +157,4 @@ export class ChromiaService {
     const cleanedAddress = address.replace(/^0x/i, "");
     return Buffer.from(cleanedAddress.toLowerCase(), "hex");
   }
-  /*
-  async getAuthDescriptor(
-    client: IClient,
-    accountId: string,
-    evmAddress: string,
-  ): Promise<string> {
-    try {
-      console.log(
-        `Querying auth descriptor for ${accountId} and ${evmAddress}`,
-      );
-      const result = await client.query(system_queries.GET_AUTH_DESCRIPTOR, {
-        account_id: this.stringToBuffer(accountId),
-        evm_address: this.hexToByteArray(evmAddress),
-      });
-
-      const stringed = this.bufferToString(result[0].id);
-      console.log(`Got auth descriptior id: ${stringed}`);
-      return stringed;
-    } catch (e) {
-      console.log(e);
-      return ""; //fix later
-    }
-  }*/
 }

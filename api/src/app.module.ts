@@ -1,7 +1,29 @@
 import { Module } from "@nestjs/common";
 import { ChatModule } from "./chat/chat.module";
+import { ListenerModule } from "./listener/listener.module";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { AssetModule } from "./assets/assets.module";
+import { AssetInfo } from "./assets/entities/asset.entity";
+import { ListenerConfig } from "./listener/entities/listener.entity";
+import { SaleRecord } from "./assets/entities/sale.entity";
+import { ScheduleModule } from "@nestjs/schedule";
 
 @Module({
-  imports: [ChatModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forRoot({
+      type: "postgres",
+      host: process.env.DB_HOST,
+      port: parseInt(process.env.DB_PORT) ?? 5432,
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      entities: [AssetInfo, SaleRecord, ListenerConfig],
+      synchronize: true,
+    }),
+    ChatModule,
+    AssetModule,
+    ListenerModule,
+  ],
 })
 export class AppModule {}

@@ -4,6 +4,7 @@ const queries = {
   DOES_PLAYER_OWN_ITEM: "player.does_player_own_item",
   GET_ALL_SHOP_LISTINGS: "shop.get_all_shop_listings",
   GET_CRAFTING_STATIONS: "recipes.get_stations",
+  GET_SALE_RECORDS: "storefronts.get_sale_records",
 };
 
 const ops = {

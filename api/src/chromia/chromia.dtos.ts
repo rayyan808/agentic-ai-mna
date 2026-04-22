@@ -43,10 +43,25 @@ interface location {
   x: number;
   y: number;
 }
+interface paginated_sale_records {
+  data: sale_record_dto[];
+  row_id: number;
+  [key: string]: any;
+}
+interface sale_record_dto {
+  asset_name: string;
+  price: bigint;
+  units: bigint;
+  currency: string;
+  timestamp: number;
+  rowid: number;
+}
+
 export {
   crafting_station,
   queued_recipe,
   location,
   shop_listing,
   player_asset_info,
+  paginated_sale_records,
 };
