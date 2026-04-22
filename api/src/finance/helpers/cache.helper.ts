@@ -1,5 +1,6 @@
 import { asset_info } from "src/assets/assets.constant";
 import { AssetService } from "src/assets/assets.service";
+import { AssetInfo } from "src/assets/entities/asset.entity";
 
 export class CacheHelper {
   async cacheHitOrPopulate(
@@ -51,5 +52,21 @@ export class CacheHelper {
     asset_info: asset_info,
   ) {
     cacheMap.get(asset_name).set(currency, asset_info);
+  }
+
+  async dumpCache(
+    assetService: AssetService,
+    cacheMap: Map<string, Map<string, asset_info>>,
+  ) {
+    let rows: Array<AssetInfo> = [];
+    for (let [asset_name, currencyCache] of cacheMap.entries()) {
+      for (let [currency, asset_info] of currencyCache.entries()) {
+        rows.push({ asset_name, currency, ...asset_info });
+      }
+    }
+    console.log(`${JSON.stringify(rows, null, 3)}`);
+    await assetService.bulkInsert(rows);
+    cacheMap.clear();
+    console.log(`[Cache Helper] Dumped cache into DB`);
   }
 }
