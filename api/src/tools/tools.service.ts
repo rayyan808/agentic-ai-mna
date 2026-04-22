@@ -6,17 +6,39 @@ import { tool_descriptions, tool_names } from "./tools.constant";
 import { Injectable } from "@nestjs/common";
 import { ops } from "src/chromia/chromia.constants";
 import { bigintReplacer } from "./tools.helper";
+import { AssetService } from "src/assets/assets.service";
 
 @Injectable()
 export class ToolService {
-  constructor(private readonly chromiaService: ChromiaService) {}
+  constructor(
+    private readonly chromiaService: ChromiaService,
+    private readonly assetService: AssetService,
+  ) {}
   getAllTools(session: Session): DynamicStructuredTool[] {
     return [
       this.getAllShopListings(session),
       this.doesPlayerOwnItem(session),
       this.getFT4Inventory(session),
       this.buyItems(session),
+      this.getAssetData(),
     ];
+  }
+  getAssetData() {
+    return tool(
+      async (args) => {
+        return JSON.stringify(
+          await this.assetService.getAssetData(args["asset_name"]),
+          bigintReplacer,
+        );
+      },
+      {
+        name: tool_names.GET_ASSET_DATA,
+        description: tool_descriptions.GET_ASSET_DATA,
+        schema: z.object({
+          asset_name: z.string().describe("Name of the asset"),
+        }),
+      },
+    );
   }
   getAllShopListings(session: Session) {
     return tool(
