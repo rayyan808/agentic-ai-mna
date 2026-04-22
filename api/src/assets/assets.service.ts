@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { asset_info } from "src/listener/listener.constants";
 import { AssetInfo } from "./entities/asset.entity";
 import { Repository } from "typeorm";
 import { SaleRecord } from "./entities/sale.entity";
-import { Sale } from "./assets.constant";
+import { asset_info, Sale } from "./assets.constant";
 
 @Injectable()
 export class AssetService {
