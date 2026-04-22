@@ -8,7 +8,6 @@ export class SaleRecordService {
     @InjectRepository(SaleRecord) private saleRepo: Repository<SaleRecord>,
   ) {}
   async insert(data: Sale) {
-    console.log(`Creating Sale Record for ${JSON.stringify(data)}..`);
     await this.saleRepo.insert({
       ...data,
     });

@@ -31,10 +31,9 @@ export class FinanceService {
   async process() {
     try {
       const lastProcessedAt = await this.getLastProcessedAt();
-      console.log(`[Finance] Last Processed Timestamp: ${lastProcessedAt}`);
+
       const records =
         await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
-      console.log(`Got ${records.length} records..`);
       if (records.length == 0) return;
       let latestTimestamp = lastProcessedAt;
       for (let { asset_name, currency, price, timestamp } of records) {
@@ -79,7 +78,6 @@ export class FinanceService {
     );
   }
   async getLastProcessedAt() {
-    console.log(`[Finance] Getting last processed at timestamp..`);
     const config = await this.financeRepo.find({
       where: {
         version: this.version,
