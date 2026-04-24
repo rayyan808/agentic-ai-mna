@@ -18,6 +18,12 @@ export class SaleRecord {
   @Column()
   currency: string;
 
-  @Column({ type: "bigint", default: () => "0" })
+  @Column({
+    type: "bigint",
+    transformer: {
+      to: (value: number) => value?.toString(),
+      from: (value: string) => (value ? parseInt(value, 10) : 0),
+    },
+  })
   timestamp: number;
 }
