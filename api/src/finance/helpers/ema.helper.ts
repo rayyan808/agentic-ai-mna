@@ -16,12 +16,8 @@ export class EMA {
     ema: number | null,
     emaUpatedAt: number | null,
   ) {
-    if (ema && emaUpatedAt) {
-      const elapsed = purchasedAt - emaUpatedAt;
-      if (elapsed <= 0) {
-        console.log(`elapsed <=0, returning same ema`);
-        return ema;
-      }
+    if (ema !== null && emaUpatedAt !== null) {
+      const elapsed = Math.max(purchasedAt - emaUpatedAt, 1);
       const alpha = this.getAlpha(elapsed);
       const newEMA = price * alpha + ema * (1 - alpha);
       return newEMA;
@@ -32,3 +28,20 @@ export class EMA {
     }
   }
 }
+
+/**
+ * WINDOW_SIZE = 20
+ * Keep track of last WINDOW_SIZE trades and their timestamps
+ *
+ * For each incoming sale_record
+ * Get recent_trades for asset, store in Cache
+ * update asset_info.median into cache
+ * At the end, dump cache and update asset_info.median
+ *
+ * Incoming sale record => {
+ *  Insert into recent_trades
+ *  Calculate new median
+ *  Push median for asset to cache
+ *  Get median of recent_trades @* { asset_name, currency }
+ * }
+ */
