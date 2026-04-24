@@ -18,7 +18,7 @@ export class ToolService {
     return [
       this.getAllShopListings(session),
       this.doesPlayerOwnItem(session),
-      this.getFT4Inventory(session),
+      this.getPlayerAssets(session),
       this.buyItems(session),
       this.getAssetData(),
     ];
@@ -75,17 +75,17 @@ export class ToolService {
       },
     );
   }
-  getFT4Inventory(session: Session) {
+  getPlayerAssets(session: Session) {
     return tool(
       async () => {
         return JSON.stringify(
-          await this.chromiaService.get_ft4_inventory(session),
+          await this.chromiaService.get_player_assets(session),
           bigintReplacer,
         );
       },
       {
-        name: tool_names.GET_FT4_INVENTORY,
-        description: tool_descriptions.GET_FT4_INVENTORY,
+        name: tool_names.GET_PLAYER_ASSETS,
+        description: tool_descriptions.GET_PLAYER_ASSETS,
         schema: z.object({}),
       },
     );

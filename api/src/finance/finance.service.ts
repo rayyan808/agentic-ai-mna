@@ -28,7 +28,7 @@ export class FinanceService {
   }
 
   @Cron(CronExpression.EVERY_10_SECONDS)
-  async process() {
+  private async process() {
     try {
       const lastProcessedAt = await this.getLastProcessedAt();
 
@@ -36,7 +36,7 @@ export class FinanceService {
         await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
       if (records.length == 0) return;
       let latestTimestamp = lastProcessedAt;
-      for (let { asset_name, currency, price, timestamp } of records) {
+      for (let { asset_name, currency, price, units, timestamp } of records) {
         //Check if we have at cache, otherwise pull from DB
         let asset_info = await this.cacheHelper.cacheHitOrPopulate(
           this.assetService,
@@ -46,7 +46,7 @@ export class FinanceService {
         );
 
         const newEMA = this.emaHelper.calculateEMA(
-          price,
+          price / units,
           timestamp,
           asset_info.ema,
           asset_info.emaUpdatedAt,
@@ -75,13 +75,13 @@ export class FinanceService {
     }
   }
 
-  async setLastProcessedAt(timestamp: number) {
+  private async setLastProcessedAt(timestamp: number) {
     await this.financeRepo.upsert(
       [{ version: this.version, latestTimestamp: timestamp }],
       ["version"],
     );
   }
-  async getLastProcessedAt() {
+  private async getLastProcessedAt() {
     const config = await this.financeRepo.find({
       where: {
         version: this.version,
