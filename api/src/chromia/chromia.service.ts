@@ -8,7 +8,7 @@ import { queries, TransactionResult, TX_STATUS } from "./chromia.constants";
 import {
   crafting_station,
   paginated_sale_records,
-  player_asset_info,
+  asset_list,
   shop_listing,
 } from "./chromia.dtos";
 import { Injectable, Scope } from "@nestjs/common";
@@ -88,27 +88,18 @@ export class ChromiaService {
     });
     return this.bufferToString(bufferAccountId);
   }
-  async get_ft4_inventory(
-    session: Session,
-  ): Promise<{ amount: string; name: string }[]> {
-    console.log(`Getting FT4 inventory for ${session.account.id}`);
+  async get_player_assets(session: Session): Promise<asset_list> {
+    console.log(`Getting asset list for: ${session.account.id}`);
     try {
-      const result = await session.query<player_asset_info[]>(
-        queries.GET_FT4_INVENTORY,
+      const result = await session.query<asset_list>(
+        queries.GET_PLAYER_ASSETS,
         {
           account_id: session.account.id,
         },
       );
-
-      return result.map((v) => {
-        return {
-          name: v.name,
-          amount: v.amount.toString(),
-        };
-      });
+      return result;
     } catch (e) {
-      console.log(e);
-      return [];
+      console.log(e); //@TODO: handle error better
     }
   }
   async get_all_shop_listings(session: Session): Promise<shop_listing[]> {
@@ -140,9 +131,6 @@ export class ChromiaService {
       {
         cursor: [page_size, cursor],
       },
-    );
-    console.log(
-      `Got result length: ${result.data.length} and cursor: ${result.row_id}`,
     );
     return result;
   }

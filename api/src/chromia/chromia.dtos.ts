@@ -1,6 +1,12 @@
-interface player_asset_info {
+interface ft4_info {
   name: string;
   amount: bigint;
+  [key: string]: any; // Index signature for GTV compatibility
+}
+interface crc2_info {
+  name: string;
+  amount: bigint;
+  types: string[];
   [key: string]: any; // Index signature for GTV compatibility
 }
 
@@ -56,12 +62,16 @@ interface sale_record_dto {
   timestamp: number;
   rowid: number;
 }
-
+interface asset_list {
+  FT4: ft4_info[];
+  CRC: crc2_info[];
+  [key: string]: any; // Index signature for GTV compatibility
+}
 export {
   crafting_station,
   queued_recipe,
   location,
   shop_listing,
-  player_asset_info,
+  asset_list,
   paginated_sale_records,
 };

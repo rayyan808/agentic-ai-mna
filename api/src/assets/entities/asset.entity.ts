@@ -11,6 +11,13 @@ export class AssetInfo {
   @Column({ type: "double precision" })
   ema: number;
 
-  @Column({ type: "bigint", nullable: true })
+  @Column({
+    type: "bigint",
+    nullable: true,
+    transformer: {
+      to: (value: number) => value?.toString(),
+      from: (value: string) => (value ? parseInt(value, 10) : 0),
+    },
+  })
   emaUpdatedAt: number;
 }

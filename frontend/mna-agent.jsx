@@ -67,6 +67,74 @@ function MarkdownText({ text }) {
           {parseInline(h3m[1], `h3-${i}`)}
         </p>
       );
+    } else if (line.startsWith("```")) {
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      elements.push(
+        <pre key={`code-${i}`} style={{
+          background: "var(--color-background-tertiary)",
+          border: "1px solid var(--color-border-tertiary)",
+          borderRadius: 6,
+          padding: "10px 14px",
+          overflowX: "auto",
+          margin: "6px 0",
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: "var(--color-text-primary)",
+        }}>
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      continue;
+    } else if (line.trimStart().startsWith("|")) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const parseRow = (row) => row.split("|").slice(1, -1).map(c => c.trim());
+      const headers = parseRow(tableLines[0]);
+      const dataRows = tableLines.slice(2).map(parseRow);
+      elements.push(
+        <div key={`table-${i}`} style={{ overflowX: "auto", margin: "6px 0" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, borderRadius: 6 }}>
+            <thead>
+              <tr>
+                {headers.map((h, j) => (
+                  <th key={j} style={{
+                    textAlign: "left",
+                    background: "var(--color-background-tertiary)",
+                    color: "var(--color-text-primary)",
+                    padding: "7px 12px",
+                    borderBottom: "1px solid var(--color-border-tertiary)",
+                    fontWeight: 600,
+                  }}>{parseInline(h, `th-${i}-${j}`)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => (
+                <tr key={ri} style={{ background: ri % 2 === 1 ? "var(--color-background-secondary)" : "transparent" }}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={{
+                      padding: "6px 12px",
+                      borderBottom: "1px solid var(--color-border-tertiary)",
+                      color: "var(--color-text-primary)",
+                    }}>{parseInline(cell, `td-${i}-${ri}-${ci}`)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
     } else if (/^[-*] /.test(line)) {
       const items = [];
       while (i < lines.length && /^[-*] /.test(lines[i])) {

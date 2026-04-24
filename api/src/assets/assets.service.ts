@@ -9,6 +9,15 @@ export class AssetService {
   constructor(
     @InjectRepository(AssetInfo) private assetRepo: Repository<AssetInfo>,
   ) {}
+
+  async getAssetData(asset_name): Promise<AssetInfo[]> {
+    const res = await this.assetRepo.find({
+      where: {
+        asset_name,
+      },
+    });
+    return res;
+  }
   async getAssetInfo(asset_name: string, currency: string): Promise<AssetInfo> {
     const res = await this.assetRepo.findOneOrFail({
       where: {

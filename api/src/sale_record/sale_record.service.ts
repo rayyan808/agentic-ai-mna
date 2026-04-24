@@ -25,7 +25,6 @@ export class SaleRecordService {
         timestamp: "ASC",
       },
     });
-    console.log(`Found ${res.length} unprocessed sale records`);
     return res;
   }
 }
