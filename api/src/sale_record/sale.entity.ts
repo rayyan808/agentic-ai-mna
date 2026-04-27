@@ -1,13 +1,22 @@
-import { Entity, Column, Index, PrimaryColumn } from "typeorm";
+import {
+  Entity,
+  Column,
+  Index,
+  PrimaryColumn,
+  PrimaryGeneratedColumn,
+} from "typeorm";
 import { Hypertable, TimeColumn } from "@timescaledb/typeorm";
-@Entity()
+@Entity("sale_record")
 @Hypertable({})
 @Index(["asset_name", "token_name"])
 export class SaleRecord {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @TimeColumn()
   timestamp: Date;
 
-  @PrimaryColumn()
+  @Column()
   asset_name: string;
 
   @Column()
