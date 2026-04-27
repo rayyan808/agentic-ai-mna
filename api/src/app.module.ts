@@ -10,6 +10,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { FinanceModule } from "./finance/finance.module";
 import { FinanceConfig } from "./finance/finance.entity";
 import { TokenModule } from "./token/token.module";
+import { Token } from "./token/token.entity";
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { TokenModule } from "./token/token.module";
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [Asset, SaleRecord, ListenerConfig, FinanceConfig],
+      entities: [Token, Asset, SaleRecord, ListenerConfig, FinanceConfig],
       //synchronize: true, not compatible w timescale
     }),
     ChatModule,
