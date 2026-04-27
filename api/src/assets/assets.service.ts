@@ -36,7 +36,12 @@ export class AssetService {
       .createQueryBuilder()
       .insert()
       .into(Asset)
-      .values({ asset_name, token_name, ema, emaUpdatedAt })
+      .values({
+        asset_name,
+        token_name,
+        ema,
+        emaUpdatedAt: new Date(emaUpdatedAt),
+      })
       .orIgnore()
       .execute();
   }
@@ -48,12 +53,12 @@ export class AssetService {
   ) {
     await this.assetRepo.upsert(
       [{ asset_name: assetName, token_name, ...assetInfo }],
-      ["asset_name", "currency"],
+      ["asset_name", "token_name"],
     );
   }
 
   async bulkInsert(assets: Asset[]) {
     console.log(`Bulk inserting ${assets.length} assets..`);
-    await this.assetRepo.upsert(assets, ["asset_name", "currency"]);
+    await this.assetRepo.upsert(assets, ["asset_name", "token_name"]);
   }
 }
