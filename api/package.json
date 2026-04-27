@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "nest start --watch",
     "start": "nest start",
-    "build": "nest build"
+    "build": "nest build",
+    "migration:generate": "npm run typeorm migration:generate -- -d src/data-source.ts",
+    "migration": "npm run typeorm migration:run -- -d src/data-source.ts",
+    "typeorm": "typeorm-ts-node-commonjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
@@ -27,7 +30,6 @@
     "postgres": "^3.4.9",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.28",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -35,6 +37,7 @@
     "@nestjs/schematics": "^10.0.0",
     "@types/node": "^20.0.0",
     "ts-node": "^10.9.0",
+    "typeorm": "^0.3.28",
     "typescript": "^5.0.0"
   }
 }
