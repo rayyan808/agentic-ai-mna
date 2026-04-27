@@ -56,15 +56,10 @@ export class FinanceService {
           `${asset_name} was sold for ${price} ${currency}, new EMA: ${newEMA}`,
         );
 
-        this.cacheHelper.setAssetInfo(
-          this.assetInfoCache,
-          asset_name,
-          currency,
-          {
-            ema: newEMA,
-            emaUpdatedAt: timestamp,
-          },
-        );
+        this.cacheHelper.setAsset(this.assetInfoCache, asset_name, currency, {
+          ema: newEMA,
+          emaUpdatedAt: timestamp,
+        });
         if (timestamp > latestTimestamp) latestTimestamp = timestamp;
       }
       await this.cacheHelper.dumpCache(this.assetService, this.assetInfoCache);
