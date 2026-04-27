@@ -10,7 +10,7 @@ import { SaleRecord } from "./sale_record/sale.entity";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
-  host: String(process.env.DB_USERNAME),
+  host: "127.", //only allow migrations within the system, dont wanna migrate a remote db accidentally
   port: parseInt(process.env.DB_PORT) ?? 5432,
   username: String(process.env.DB_USERNAME),
   password: String(process.env.DB_PASSWORD),

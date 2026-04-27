@@ -1,5 +1,6 @@
-import { Column, PrimaryColumn } from "typeorm";
+import { Column, Entity, PrimaryColumn } from "typeorm";
 
+@Entity()
 export class Token {
   @PrimaryColumn()
   name: string;
