@@ -1,4 +1,4 @@
-import { MoreThan, Repository } from "typeorm";
+import { MoreThan, QueryBuilder, Repository } from "typeorm";
 import { Sale } from "./sale_record.dto";
 import { SaleRecord } from "src/sale_record/sale.entity";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -13,18 +13,13 @@ export class SaleRecordService {
     });
     return;
   }
-
-  async getUnprocessedRecords(
-    processedTillTimestamp: number,
-  ): Promise<SaleRecord[]> {
-    const res = await this.saleRepo.find({
-      where: {
-        timestamp: MoreThan(processedTillTimestamp),
-      },
-      order: {
-        timestamp: "ASC",
-      },
-    });
-    return res;
+  //@TODO: Convert to a real-time aggregation
+  async getRecords(fromDate: number, toDate: number): Promise<SaleRecord[]> {
+    const x = this.saleRepo.query<SaleRecord[]>(
+      `
+      SELECT 
+      `,
+    );
+    return x;
   }
 }

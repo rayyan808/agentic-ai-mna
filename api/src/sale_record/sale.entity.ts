@@ -1,12 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
-
+import { Entity, Column, Index, PrimaryColumn } from "typeorm";
+import { Hypertable, TimeColumn } from "@timescaledb/typeorm";
 @Entity()
-@Index(["asset_name"])
+@Hypertable({})
+@Index(["asset_name", "currency"])
 export class SaleRecord {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @TimeColumn()
+  timestamp: Date;
 
-  @Column()
+  @PrimaryColumn()
   asset_name: string;
 
   @Column()
@@ -17,13 +18,4 @@ export class SaleRecord {
 
   @Column()
   currency: string;
-
-  @Column({
-    type: "bigint",
-    transformer: {
-      to: (value: number) => value?.toString(),
-      from: (value: string) => (value ? parseInt(value, 10) : 0),
-    },
-  })
-  timestamp: number;
 }

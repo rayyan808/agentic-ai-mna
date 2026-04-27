@@ -21,7 +21,7 @@ import { FinanceConfig } from "./finance/finance.entity";
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: [AssetInfo, SaleRecord, ListenerConfig, FinanceConfig],
-      synchronize: true,
+      //synchronize: true, not compatible w timescale
     }),
     ChatModule,
     AssetModule,
