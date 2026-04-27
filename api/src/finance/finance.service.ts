@@ -12,7 +12,6 @@ export class FinanceService {
   emaHelper: EMA;
   cacheHelper: CacheHelper;
   version: number;
-
   assetInfoCache: Map<string, Map<string, asset_info>>;
 
   constructor(
@@ -32,31 +31,34 @@ export class FinanceService {
     try {
       const lastProcessedAt = await this.getLastProcessedAt();
 
-      const records =
-        await this.saleRecordService.getUnprocessedRecords(lastProcessedAt);
+      const records = await this.saleRecordService.getRecords(
+        lastProcessedAt,
+        null,
+      );
+      console.log(`Got ${records.length} from time-series query`);
       if (records.length == 0) return;
       let latestTimestamp = lastProcessedAt;
-      for (let { asset_name, currency, price, units, timestamp } of records) {
+      for (let { asset_name, token_name, price, units, timestamp } of records) {
         //Check if we have at cache, otherwise pull from DB
         let asset_info = await this.cacheHelper.cacheHitOrPopulate(
           this.assetService,
           this.assetInfoCache,
           asset_name,
-          currency,
+          token_name,
         );
 
         const newEMA = this.emaHelper.calculateEMA(
           price / units,
-          timestamp,
+          timestamp.getUTCMilliseconds(),
           asset_info.ema,
-          asset_info.emaUpdatedAt,
+          asset_info.emaUpdatedAt.getUTCMilliseconds(),
         );
 
         console.log(
-          `${asset_name} was sold for ${price} ${currency}, new EMA: ${newEMA}`,
+          `${asset_name} was sold for ${price} ${token_name}, new EMA: ${newEMA}`,
         );
 
-        this.cacheHelper.setAsset(this.assetInfoCache, asset_name, currency, {
+        this.cacheHelper.setAsset(this.assetInfoCache, asset_name, token_name, {
           ema: newEMA,
           emaUpdatedAt: timestamp,
         });
@@ -70,7 +72,7 @@ export class FinanceService {
     }
   }
 
-  private async setLastProcessedAt(timestamp: number) {
+  private async setLastProcessedAt(timestamp: Date) {
     await this.financeRepo.upsert(
       [{ version: this.version, latestTimestamp: timestamp }],
       ["version"],
@@ -88,9 +90,9 @@ export class FinanceService {
       console.log(`Finance config doesn't exist, creating...`);
       await this.financeRepo.insert({
         version: this.version,
-        latestTimestamp: 0,
+        latestTimestamp: new Date(0),
       });
-      return 0;
+      return new Date(0);
     }
   }
 }

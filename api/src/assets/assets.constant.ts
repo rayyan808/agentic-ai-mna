@@ -1,4 +1,4 @@
-export type asset_info = { ema: number; emaUpdatedAt: number | null };
+export type asset_info = { ema: number; emaUpdatedAt: Date | null };
 
 export interface asset {
   name: string;

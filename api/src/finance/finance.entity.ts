@@ -5,6 +5,6 @@ export class FinanceConfig {
   @PrimaryColumn()
   version: number;
 
-  @Column({ type: "bigint", default: 0 })
-  latestTimestamp: number;
+  @Column()
+  latestTimestamp: Date;
 }
