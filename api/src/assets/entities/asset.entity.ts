@@ -1,10 +1,12 @@
-import { Column, Entity, PrimaryColumn } from "typeorm";
+import { Token } from "src/token/token.entity";
+import { Entity, JoinColumn, OneToOne, PrimaryColumn } from "typeorm";
 
 @Entity()
-export class AssetInfo {
+export class Asset {
   @PrimaryColumn()
   asset_name: string;
 
-  @PrimaryColumn()
-  currency: string;
+  @OneToOne(() => Token)
+  @JoinColumn()
+  token: Token;
 }
