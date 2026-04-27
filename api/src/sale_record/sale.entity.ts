@@ -2,7 +2,7 @@ import { Entity, Column, Index, PrimaryColumn } from "typeorm";
 import { Hypertable, TimeColumn } from "@timescaledb/typeorm";
 @Entity()
 @Hypertable({})
-@Index(["asset_name", "currency"])
+@Index(["asset_name", "token_name"])
 export class SaleRecord {
   @TimeColumn()
   timestamp: Date;
@@ -17,5 +17,5 @@ export class SaleRecord {
   units: number;
 
   @Column()
-  currency: string;
+  token_name: string;
 }
