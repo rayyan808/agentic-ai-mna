@@ -1,12 +1,16 @@
-import { Token } from "src/token/token.entity";
-import { Entity, JoinColumn, OneToOne, PrimaryColumn } from "typeorm";
+import { Column, Entity, PrimaryColumn } from "typeorm";
 
 @Entity()
 export class Asset {
   @PrimaryColumn()
   asset_name: string;
 
-  @OneToOne(() => Token)
-  @JoinColumn()
-  token: Token;
+  @PrimaryColumn()
+  token_name: string;
+
+  @Column({ type: "double precision" })
+  ema: number;
+
+  @Column()
+  emaUpdatedAt: Date;
 }

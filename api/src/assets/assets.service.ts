@@ -8,7 +8,7 @@ import { asset_info } from "./assets.constant";
 export class AssetService {
   constructor(@InjectRepository(Asset) private assetRepo: Repository<Asset>) {}
 
-  async getAssetData(asset_name): Promise<Asset[]> {
+  async getAssetData(asset_name: string): Promise<Asset[]> {
     const res = await this.assetRepo.find({
       where: {
         asset_name,
@@ -16,11 +16,11 @@ export class AssetService {
     });
     return res;
   }
-  async getAsset(asset_name: string, currency: string): Promise<Asset> {
+  async getAsset(asset_name: string, token_name: string): Promise<Asset> {
     const res = await this.assetRepo.findOneOrFail({
       where: {
         asset_name,
-        currency,
+        token_name,
       },
     });
     return res;
@@ -28,7 +28,7 @@ export class AssetService {
 
   async insertNewAsset(
     asset_name: string,
-    currency: string,
+    token_name: string,
     ema: number,
     emaUpdatedAt: number,
   ) {
@@ -36,17 +36,18 @@ export class AssetService {
       .createQueryBuilder()
       .insert()
       .into(Asset)
-      .values({ asset_name, currency, ema, emaUpdatedAt })
+      .values({ asset_name, token_name, ema, emaUpdatedAt })
       .orIgnore()
       .execute();
   }
+
   async updateAsset(
     assetName: string,
-    currency: string,
+    token_name: string,
     assetInfo: asset_info,
   ) {
     await this.assetRepo.upsert(
-      [{ asset_name: assetName, currency: currency, ...assetInfo }],
+      [{ asset_name: assetName, token_name, ...assetInfo }],
       ["asset_name", "currency"],
     );
   }
