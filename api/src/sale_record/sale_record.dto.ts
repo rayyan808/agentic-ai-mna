@@ -1,9 +1,9 @@
 export interface Sale {
   asset_name: string;
-  currency: string;
+  token_name: string;
   price: number;
   units: number;
-  timestamp: number;
+  timestamp: Date;
 }
 
 export enum TimePeriod {

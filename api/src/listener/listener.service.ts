@@ -49,9 +49,9 @@ export class ListenerService {
         await this.saleRecordService.insert({
           asset_name,
           price: Number(price),
-          currency,
+          token_name: currency,
           units: Number(units),
-          timestamp,
+          timestamp: new Date(timestamp),
         });
       }
 
