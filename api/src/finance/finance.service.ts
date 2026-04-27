@@ -30,10 +30,12 @@ export class FinanceService {
   private async process() {
     try {
       const lastProcessedAt = await this.getLastProcessedAt();
-
+      console.log(
+        `Getting records from ${lastProcessedAt.toUTCString()} to ${new Date().toUTCString()}`,
+      );
       const records = await this.saleRecordService.getRecords(
         lastProcessedAt,
-        null,
+        new Date(),
       );
       console.log(`Got ${records.length} from time-series query`);
       if (records.length == 0) return;

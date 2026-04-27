@@ -36,13 +36,13 @@ export class SaleRecordService {
     console.log(`Got bucket: ${JSON.stringify(x, null, 3)}`);
     return x;
   }
-  async getRecords(fromDate: Date, toDate: Date | null): Promise<SaleRecord[]> {
+  async getRecords(fromDate: Date, toDate: Date): Promise<SaleRecord[]> {
     const x = this.saleRepo.query(
       `
       SELECT * 
       FROM sale_record s
       WHERE s.timestamp > $1
-        AND ($2 is NULL) OR (s.timestamp < $2)
+        AND s.timestamp < $2
       ORDER BY timestamp ASC
       `,
       [fromDate, toDate],
