@@ -1,8 +1,7 @@
 import { Entity, Column, Index, PrimaryGeneratedColumn } from "typeorm";
 import { Hypertable, TimeColumn } from "@timescaledb/typeorm";
 import Decimal from "decimal.js";
-import { DecimalTransformer } from "src/lib/decimal.helper";
-import { Transform } from "class-transformer";
+import { decimalTransformer } from "../lib/decimal.helper";
 @Entity("sale_record")
 @Hypertable({})
 @Index(["asset_name", "token_name"])
@@ -20,7 +19,7 @@ export class SaleRecord {
     type: "decimal",
     precision: 40,
     scale: 20,
-    transformer: new DecimalTransformer(),
+    transformer: decimalTransformer,
   })
   price: Decimal;
 
