@@ -1,3 +1,6 @@
+import Decimal from "decimal.js";
+import { Candlestick, TradeWindow } from "src/sale_record/sale_record.dto";
+
 export class EMA {
   halfLife: number;
 
@@ -5,7 +8,7 @@ export class EMA {
     this.halfLife = timeInMS;
   }
 
-  private getAlpha(timeElapsedInMS: number) {
+  getAlpha(timeElapsedInMS: number) {
     return 1 - Math.exp(-timeElapsedInMS / this.halfLife);
   }
 
@@ -25,6 +28,25 @@ export class EMA {
       //No historical data for this asset yet, current price is the EMA
       console.log(`No historical data for this asset, returning price`);
       return price;
+    }
+  }
+  calculateEMAForCandle(prevEMA: Decimal, candle: Candlestick, alpha: number) {
+    const closing_price = candle.close;
+    if (prevEMA.equals(0)) return closing_price;
+
+    return closing_price.mul(alpha).add(prevEMA.mul(1 - alpha));
+  }
+
+  private getTimeIntervalInMS(tradeWindow: TradeWindow): number {
+    switch (tradeWindow) {
+      case TradeWindow.hourly:
+        return 3.6e6;
+      case TradeWindow.daily:
+        return 8.64e7;
+      case TradeWindow.weekly:
+        return 6.048e8;
+      case TradeWindow.monthly:
+        return 2.419e9;
     }
   }
 }

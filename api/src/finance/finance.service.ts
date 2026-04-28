@@ -1,18 +1,16 @@
 import { SaleRecordService } from "src/sale_record/sale_record.service";
 import { EMA } from "./helpers/ema.helper";
-import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FinanceConfig } from "./finance.entity";
 import { Repository } from "typeorm";
-import { asset_info } from "src/assets/assets.constant";
 import { AssetService } from "src/assets/assets.service";
-import { CacheHelper } from "./helpers/cache.helper";
+import { Candlestick, TradeWindow } from "src/sale_record/sale_record.dto";
+import { AssetFinanceReport } from "./finance.dto";
+import Decimal from "decimal.js";
 
 export class FinanceService {
   emaHelper: EMA;
-  cacheHelper: CacheHelper;
   version: number;
-  assetInfoCache: Map<string, Map<string, asset_info>>;
 
   constructor(
     @InjectRepository(FinanceConfig)
@@ -21,59 +19,36 @@ export class FinanceService {
     private readonly assetService: AssetService,
   ) {
     this.emaHelper = new EMA(parseInt(process.env.EMA_TIME_WINDOW));
-    this.cacheHelper = new CacheHelper();
     this.version = parseInt(process.env.FINANCE_VERSION);
-    this.assetInfoCache = new Map();
+  }
+  async getFinanceReport(
+    asset_name: string,
+    token_name: string,
+    tradeWindow: TradeWindow,
+    fromDate: Date,
+    toDate: Date,
+  ) {
+    const candles = await this.saleRecordService.getCandles(
+      asset_name,
+      token_name,
+      fromDate,
+      toDate,
+      tradeWindow,
+    );
+    console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
+    this.produceFinanceReport(candles, tradeWindow);
   }
 
-  @Cron(CronExpression.EVERY_10_SECONDS)
-  private async process() {
-    try {
-      const lastProcessedAt = await this.getLastProcessedAt();
-      console.log(
-        `Getting records from ${lastProcessedAt.toUTCString()} to ${new Date().toUTCString()}`,
-      );
-      const records = await this.saleRecordService.getRecords(
-        lastProcessedAt,
-        new Date(),
-      );
-      console.log(`Got ${records.length} from time-series query`);
-      if (records.length == 0) return;
-      let latestTimestamp = lastProcessedAt;
-      for (let { asset_name, token_name, price, units, timestamp } of records) {
-        //Check if we have at cache, otherwise pull from DB
-        let asset_info = await this.cacheHelper.cacheHitOrPopulate(
-          this.assetService,
-          this.assetInfoCache,
-          asset_name,
-          token_name,
-        );
-
-        const newEMA = this.emaHelper.calculateEMA(
-          price / units,
-          timestamp.getUTCMilliseconds(),
-          asset_info.ema,
-          asset_info.emaUpdatedAt.getUTCMilliseconds(),
-        );
-
-        console.log(
-          `${asset_name} was sold for ${price} ${token_name}, new EMA: ${newEMA}`,
-        );
-
-        this.cacheHelper.setAsset(this.assetInfoCache, asset_name, token_name, {
-          ema: newEMA,
-          emaUpdatedAt: timestamp,
-        });
-        if (timestamp > latestTimestamp) latestTimestamp = timestamp;
-      }
-      await this.cacheHelper.dumpCache(this.assetService, this.assetInfoCache);
-      await this.setLastProcessedAt(latestTimestamp);
-    } catch (e) {
-      //TODO: Need a Dead letter Queue
-      console.log(`[Finance] Error processing... \n ${e}`);
+  private produceFinanceReport(
+    candles: Candlestick[],
+    tradeWindow: TradeWindow,
+  ): AssetFinanceReport {
+    let EMA = new Decimal(0);
+    let alpha = this.emaHelper.getAlpha(tradeWindow);
+    for (let candle of candles) {
+      EMA = this.emaHelper.calculateEMAForCandle(EMA, candle, alpha);
     }
   }
-
   private async setLastProcessedAt(timestamp: Date) {
     await this.financeRepo.upsert(
       [{ version: this.version, latestTimestamp: timestamp }],

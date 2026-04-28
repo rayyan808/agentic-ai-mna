@@ -1,18 +1,33 @@
+import Decimal from "decimal.js";
+
 export interface Sale {
   asset_name: string;
   token_name: string;
-  price: number;
+  price: Decimal;
   units: number;
   timestamp: Date;
 }
 
-export enum TimePeriod {
-  hour = "1 hour",
-  six_hour = "6 hours",
-  day = "1 day",
-  week = "7 days",
-  two_week = "2 weeks",
-  month = "1 month",
+export interface Candlestick {
+  bucket: Date;
+  asset_name: string;
+  token_name: string;
+  open: Decimal;
+  close: Decimal;
+  low: Decimal;
+  high: Decimal;
+  volume: number;
+  sum_price: Decimal;
+  sum_price_volume: Decimal;
+  trade_count: number;
+  vwap: Decimal;
+  avg_price: Decimal;
+}
+export enum TradeWindow {
+  hourly = "hourly_trades",
+  daily = "daily_trades",
+  weekly = "weekly_trades",
+  monthly = "monthly_trades",
 }
 
 export interface MovingAverage {
