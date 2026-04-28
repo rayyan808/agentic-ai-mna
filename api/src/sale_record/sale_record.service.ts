@@ -22,6 +22,9 @@ export class SaleRecordService {
     to: Date,
     tradeWindow: TradeWindow,
   ): Promise<Candlestick[]> {
+    console.log(
+      `Getting ${asset_name}/${token_name} from: ${from} to: ${to} ${tradeWindow.valueOf()}`,
+    );
     return await this.saleRepo.query<Candlestick[]>(
       `
       SELECT 
@@ -40,10 +43,10 @@ export class SaleRecordService {
         sum_price / trade_count as avg_price
       FROM ${tradeWindow.valueOf()}
       WHERE 
-        bucket >= $3,
-        bucket < $4,
-        asset_name = $1,
-        token_name = $2
+        bucket >= $3
+        AND bucket < $4
+        AND asset_name = $1
+        AND token_name = $2
       ORDER BY bucket ASC
     `,
       [asset_name, token_name, from, to],
