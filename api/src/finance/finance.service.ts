@@ -1,5 +1,4 @@
 import { SaleRecordService } from "src/sale_record/sale_record.service";
-import { EMA } from "./helpers/ema.helper";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FinanceConfig } from "./finance.entity";
 import { Repository } from "typeorm";
@@ -7,18 +6,17 @@ import { AssetService } from "src/assets/assets.service";
 import { Candlestick, TradeWindow } from "src/sale_record/sale_record.dto";
 import { AssetFinanceReport } from "./finance.dto";
 import Decimal from "decimal.js";
+import { calculateEMA, getAlpha } from "./helpers/ema.helper";
 
 export class FinanceService {
-  emaHelper: EMA;
   version: number;
 
   constructor(
     @InjectRepository(FinanceConfig)
     private financeRepo: Repository<FinanceConfig>,
     private readonly saleRecordService: SaleRecordService,
-    private readonly assetService: AssetService,
   ) {
-    this.emaHelper = new EMA(parseInt(process.env.EMA_TIME_WINDOW));
+    //  this.emaHelper = new EMA(parseInt(process.env.EMA_TIME_WINDOW));
     this.version = parseInt(process.env.FINANCE_VERSION);
   }
   async getFinanceReport(
@@ -36,19 +34,28 @@ export class FinanceService {
       tradeWindow,
     );
     console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
-    this.produceFinanceReport(candles, tradeWindow);
+    this.produceFinanceReport(candles);
   }
 
-  private produceFinanceReport(
-    candles: Candlestick[],
-    tradeWindow: TradeWindow,
-  ): AssetFinanceReport {
+  private produceFinanceReport(candles: Candlestick[]): AssetFinanceReport {
     let EMA = new Decimal(0);
-    let alpha = this.emaHelper.getAlpha(tradeWindow);
+    const alpha = getAlpha(candles.length);
+    let total_price_volume = new Decimal(0);
+    let total_volume = new Decimal(0);
+    let total_price = new Decimal(0);
     for (let candle of candles) {
-      EMA = this.emaHelper.calculateEMAForCandle(EMA, candle, alpha);
+      EMA = calculateEMA(EMA, candle.close, alpha);
+      total_price_volume.add(candle.sum_price_volume);
+      total_volume.add(candle.volume);
+      total_price.add(candle.sum_price);
     }
+    return {
+      EMA,
+      VWAP: total_price_volume.div(total_volume),
+      average_price: total_price.div(total_volume),
+    };
   }
+
   private async setLastProcessedAt(timestamp: Date) {
     await this.financeRepo.upsert(
       [{ version: this.version, latestTimestamp: timestamp }],
