@@ -9,6 +9,7 @@ export class TokenService {
   async onModuleInit() {
     console.log(`Upserting Token Data..`);
     let tokens: Token[] = config;
+    this.tokenCache = new Map();
     await this.tokenRepo.upsert(tokens, ["name"]); //@TODO: move to service level func, invalidate redis cache on upsert
     tokens.forEach((tokenObj) => {
       this.tokenCache.set(tokenObj.name, tokenObj);
