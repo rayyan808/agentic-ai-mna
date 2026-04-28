@@ -1,7 +1,6 @@
-import { asset_info } from "src/assets/assets.constant";
 import { AssetService } from "src/assets/assets.service";
 import { Asset } from "src/assets/entities/asset.entity";
-
+/*
 export class CacheHelper {
   async cacheHitOrPopulate(
     assetService: AssetService,
@@ -68,3 +67,4 @@ export class CacheHelper {
     cacheMap.clear();
   }
 }
+*/
