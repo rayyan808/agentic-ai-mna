@@ -1,10 +1,10 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
 
 @Entity()
-export class FinanceConfig {
+export class Token {
   @PrimaryColumn()
-  version: number;
+  name: string;
 
   @Column()
-  latestTimestamp: Date;
+  decimals: number;
 }

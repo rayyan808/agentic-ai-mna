@@ -5,14 +5,15 @@ import * as z from "zod";
 import { tool_descriptions, tool_names } from "./tools.constant";
 import { Injectable } from "@nestjs/common";
 import { ops } from "src/chromia/chromia.constants";
-import { bigintReplacer } from "./tools.helper";
-import { AssetService } from "src/assets/assets.service";
+import { overflowReplacer } from "./tools.helper";
+import { FinanceService } from "src/finance/finance.service";
+import { TradeWindow } from "src/sale_record/sale_record.dto";
 
 @Injectable()
 export class ToolService {
   constructor(
     private readonly chromiaService: ChromiaService,
-    private readonly assetService: AssetService,
+    private readonly financeService: FinanceService,
   ) {}
   getAllTools(session: Session): DynamicStructuredTool[] {
     return [
@@ -20,22 +21,43 @@ export class ToolService {
       this.doesPlayerOwnItem(session),
       this.getPlayerAssets(session),
       this.buyItems(session),
-      this.getAssetData(),
+      this.getFinanceReport(),
+      this.getCurrentDate(),
     ];
   }
-  getAssetData() {
+  getFinanceReport() {
     return tool(
       async (args) => {
         return JSON.stringify(
-          await this.assetService.getAssetData(args["asset_name"]),
-          bigintReplacer,
+          await this.financeService.getFinanceReport(
+            args["asset_name"],
+            args["token_name"],
+            args["trade_window"],
+            new Date(args["fromDate"]),
+            new Date(args["toDate"]),
+          ),
+          overflowReplacer,
         );
       },
       {
-        name: tool_names.GET_ASSET_DATA,
-        description: tool_descriptions.GET_ASSET_DATA,
+        name: tool_names.GET_FINANCE_REPORT,
+        description: tool_descriptions.GET_FINANCE_REPORT,
         schema: z.object({
           asset_name: z.string().describe("Name of the asset"),
+          token_name: z
+            .string()
+            .describe("Name of the currency/token i.e ALICE"),
+          trade_window: z
+            .enum(TradeWindow)
+            .describe("The size of the trading candlesticks i.e weekly"),
+          fromDate: z.iso
+            .date()
+            .describe(
+              "Start date in ISO 8601 format, e.g. 2025-01-15T00:00:00Z",
+            ),
+          toDate: z.iso
+            .date()
+            .describe("End date in ISO 8601 format, e.g. 2025-01-15T00:00:00Z"),
         }),
       },
     );
@@ -45,7 +67,7 @@ export class ToolService {
       async () => {
         return JSON.stringify(
           await this.chromiaService.get_all_shop_listings(session),
-          bigintReplacer,
+          overflowReplacer,
         );
       },
       {
@@ -63,7 +85,7 @@ export class ToolService {
             session,
             args["asset_name"],
           ),
-          bigintReplacer,
+          overflowReplacer,
         );
       },
       {
@@ -75,12 +97,24 @@ export class ToolService {
       },
     );
   }
+  getCurrentDate() {
+    return tool(
+      async () => {
+        return JSON.stringify(new Date());
+      },
+      {
+        name: tool_names.GET_CURRENT_DATE,
+        description: tool_descriptions.GET_CURRENT_DATE,
+        schema: z.object({}),
+      },
+    );
+  }
   getPlayerAssets(session: Session) {
     return tool(
       async () => {
         return JSON.stringify(
           await this.chromiaService.get_player_assets(session),
-          bigintReplacer,
+          overflowReplacer,
         );
       },
       {
@@ -98,7 +132,7 @@ export class ToolService {
             args["shop_name"],
             args["items"],
           ]),
-          bigintReplacer,
+          overflowReplacer,
         );
       },
       {

@@ -17,7 +17,7 @@ import {
   createKeyStoreInteractor,
   Session,
 } from "@chromia/ft4";
-import { makeKeyPair } from "node_modules/postchain-client/built/src/encryption/encryption";
+import { encryption } from "postchain-client";
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class ChromiaService {
@@ -39,7 +39,7 @@ export class ChromiaService {
   async createSession(privateKey: string): Promise<Session> {
     const _client = await this.getChromiaClient();
     //Keep da private key out of the model
-    const keyPair = makeKeyPair(privateKey);
+    const keyPair = encryption.makeKeyPair(privateKey);
     const evmKeyStore = createInMemoryEvmKeyStore(keyPair);
     const interactor = createKeyStoreInteractor(_client, evmKeyStore);
     const accounts = await interactor.getAccounts();

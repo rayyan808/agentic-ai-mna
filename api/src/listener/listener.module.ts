@@ -5,10 +5,12 @@ import { ChromiaModule } from "src/chromia/chromia.module";
 import { ListenerConfig } from "./entities/listener.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SaleRecordModule } from "src/sale_record/sale_record.module";
+import { TokenModule } from "src/token/token.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ListenerConfig]),
+    TokenModule,
     AssetModule,
     ChromiaModule,
     SaleRecordModule,

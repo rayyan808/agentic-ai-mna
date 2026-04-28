@@ -1,29 +1,31 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index } from "typeorm";
-
-@Entity()
-@Index(["asset_name"])
+import { Entity, Column, Index, PrimaryGeneratedColumn } from "typeorm";
+import { Hypertable, TimeColumn } from "@timescaledb/typeorm";
+import Decimal from "decimal.js";
+import { decimalTransformer } from "../lib/decimal.helper";
+@Entity("sale_record")
+@Hypertable({})
+@Index(["asset_name", "token_name"])
 export class SaleRecord {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @TimeColumn()
+  timestamp: Date;
+
   @Column()
   asset_name: string;
 
-  @Column()
-  price: number;
+  @Column({
+    type: "decimal",
+    precision: 40,
+    scale: 20,
+    transformer: decimalTransformer,
+  })
+  price: Decimal;
 
   @Column()
   units: number;
 
   @Column()
-  currency: string;
-
-  @Column({
-    type: "bigint",
-    transformer: {
-      to: (value: number) => value?.toString(),
-      from: (value: string) => (value ? parseInt(value, 10) : 0),
-    },
-  })
-  timestamp: number;
+  token_name: string;
 }

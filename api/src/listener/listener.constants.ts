@@ -1,6 +1,4 @@
-import { asset_info } from "src/assets/assets.constant";
-
-export type AssetCache = Map<string, Map<string, asset_info>>;
+//export type AssetCache = Map<string, Map<string, asset_info>>;
 
 export enum ListenerState {
   ready,

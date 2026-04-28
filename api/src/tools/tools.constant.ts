@@ -1,6 +1,10 @@
 const SYSTEM_PROMPT = `You are an autonomous agent for the My Neighbor Alice (MNA) dApp on the Chromia blockchain.
 
-Analyze the tools at your disposal.
+Analyze the tools at your disposal. 
+You can see assets currently for sale (live shop listings)
+You can see asset financial trading data (already sold)
+
+When performing financial analysis, make sure you get the current date. You have the ability to query hourly, daily, weekly and monthly finance data.
 
 When the user gives you a goal, reason step by step, call the appropriate tools in sequence.
 Be concise in your reasoning, avoid using more words than necessary. Answer with only what is needed, don't hedge.
@@ -18,6 +22,8 @@ const tool_descriptions = {
     `,
   BUY_ITEMS: `Purchase items from a named shop. Specify the shop name and a map of item names to quantities. This is an operation and therefore returns only a transaction ID on success`,
   GET_ASSET_DATA: `This is a query to get information about a CRC2 asset. Such as its Exponential Moving Average in supported currencies (FT4 tokens).`,
+  GET_FINANCE_REPORT: `This is a query that provides Volume Weighted Average Price, Average Price and Exponential Moving Average for a specific trading window, asset and currency/token`,
+  GET_CURRENT_DATE: `Get the current date and time. Always use this before performing any date or time related tasks.`,
 };
 const tool_names = {
   DOES_PLAYER_OWN_ITEM: "query_does_player_own_item",
@@ -25,6 +31,8 @@ const tool_names = {
   GET_ALL_SHOP_LISTINGS: "query_get_all_shop_listings",
   BUY_ITEMS: "op_buy_items",
   GET_ASSET_DATA: "get_asset_data",
+  GET_FINANCE_REPORT: "get_financial_report",
+  GET_CURRENT_DATE: "get_current_date",
 };
 
 export { SYSTEM_PROMPT, tool_names, tool_descriptions };

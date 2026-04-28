@@ -1,7 +1,7 @@
 services:
   db:
     container_name: "agent-db"
-    image: postgres:16-alpine
+    image: timescale/timescaledb-ha:pg17
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
