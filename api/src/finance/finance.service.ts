@@ -35,7 +35,6 @@ export class FinanceService {
         toDate,
         tradeWindow,
       );
-      console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
       return this.produceFinanceReport(candles);
     } catch (e) {
       console.log(`Error producing the finance report \n ${e}`);
@@ -50,9 +49,9 @@ export class FinanceService {
     let total_price = new Decimal(0);
     for (let candle of candles) {
       EMA = calculateEMA(EMA, candle.close, alpha);
-      total_price_volume.add(candle.sum_price_volume);
-      total_volume.add(candle.volume);
-      total_price.add(candle.sum_price);
+      total_price_volume = total_price_volume.add(candle.sum_price_volume);
+      total_volume = total_volume.add(candle.volume);
+      total_price = total_price.add(candle.sum_price);
     }
     const result = {
       EMA,
