@@ -25,7 +25,7 @@ export class FinanceService {
     tradeWindow: TradeWindow,
     fromDate: Date,
     toDate: Date,
-  ) {
+  ): Promise<AssetFinanceReport> {
     const candles = await this.saleRecordService.getCandles(
       asset_name,
       token_name,
@@ -34,7 +34,7 @@ export class FinanceService {
       tradeWindow,
     );
     console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
-    this.produceFinanceReport(candles);
+    return this.produceFinanceReport(candles);
   }
 
   private produceFinanceReport(candles: Candlestick[]): AssetFinanceReport {

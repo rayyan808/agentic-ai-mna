@@ -18,6 +18,7 @@ const tool_descriptions = {
     `,
   BUY_ITEMS: `Purchase items from a named shop. Specify the shop name and a map of item names to quantities. This is an operation and therefore returns only a transaction ID on success`,
   GET_ASSET_DATA: `This is a query to get information about a CRC2 asset. Such as its Exponential Moving Average in supported currencies (FT4 tokens).`,
+  GET_FINANCE_REPORT: `This is a query that provides Volume Weighted Average Price, Average Price and Exponential Moving Average for a specific trading window, asset and currency/token`,
 };
 const tool_names = {
   DOES_PLAYER_OWN_ITEM: "query_does_player_own_item",
@@ -25,6 +26,7 @@ const tool_names = {
   GET_ALL_SHOP_LISTINGS: "query_get_all_shop_listings",
   BUY_ITEMS: "op_buy_items",
   GET_ASSET_DATA: "get_asset_data",
+  GET_FINANCE_REPORT: "get_financial_report",
 };
 
 export { SYSTEM_PROMPT, tool_names, tool_descriptions };
