@@ -6,6 +6,8 @@ import { ListenerConfig } from "./entities/listener.entity";
 import { Repository } from "typeorm";
 import { AssetService } from "src/assets/assets.service";
 import { SaleRecordService } from "src/sale_record/sale_record.service";
+import { bigIntToDecimal } from "src/lib/decimal.helper";
+import { TokenService } from "src/token/token.service";
 
 @Injectable()
 export class ListenerService {
@@ -15,6 +17,7 @@ export class ListenerService {
   constructor(
     @InjectRepository(ListenerConfig)
     private listenerRepo: Repository<ListenerConfig>,
+    private readonly tokenService: TokenService,
     private readonly assetService: AssetService,
     private readonly chromiaService: ChromiaService,
     private readonly saleRecordService: SaleRecordService,
@@ -40,16 +43,13 @@ export class ListenerService {
         currency,
         timestamp,
       } of paginated_results.data) {
-        await this.assetService.insertNewAsset(
-          asset_name,
-          currency,
-          Number(price) / Number(units),
-          timestamp,
-        );
+        const token = await this.tokenService.getToken(currency);
+        const priceInDecimals = bigIntToDecimal(price, token.decimals);
+        await this.assetService.insertNewAsset(asset_name, currency);
         await this.saleRecordService.insert({
           asset_name,
-          price: Number(price),
-          token_name: currency,
+          price: priceInDecimals,
+          token_name: token.name,
           units: Number(units),
           timestamp: new Date(timestamp),
         });
