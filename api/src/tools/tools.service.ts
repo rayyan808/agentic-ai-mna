@@ -22,6 +22,7 @@ export class ToolService {
       this.getPlayerAssets(session),
       this.buyItems(session),
       this.getFinanceReport(),
+      this.getCurrentDate(),
     ];
   }
   getFinanceReport() {
@@ -32,8 +33,8 @@ export class ToolService {
             args["asset_name"],
             args["token_name"],
             args["trade_window"],
-            args["fromDate"],
-            args["toDate"],
+            new Date(args["fromDate"]),
+            new Date(args["toDate"]),
           ),
           overflowReplacer,
         );
@@ -49,10 +50,14 @@ export class ToolService {
           trade_window: z
             .enum(TradeWindow)
             .describe("The size of the trading candlesticks i.e weekly"),
-          fromDate: z
+          fromDate: z.iso
             .date()
-            .describe("Where to begin the analysis of trading from"),
-          toDate: z.date().describe("Where to end the analysis of trading"),
+            .describe(
+              "Start date in ISO 8601 format, e.g. 2025-01-15T00:00:00Z",
+            ),
+          toDate: z.iso
+            .date()
+            .describe("End date in ISO 8601 format, e.g. 2025-01-15T00:00:00Z"),
         }),
       },
     );
@@ -89,6 +94,18 @@ export class ToolService {
         schema: z.object({
           asset_name: z.string().describe("The name of the asset/item"),
         }),
+      },
+    );
+  }
+  getCurrentDate() {
+    return tool(
+      async () => {
+        return JSON.stringify(new Date());
+      },
+      {
+        name: tool_names.GET_CURRENT_DATE,
+        description: tool_descriptions.GET_CURRENT_DATE,
+        schema: z.object({}),
       },
     );
   }

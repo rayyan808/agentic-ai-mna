@@ -26,15 +26,20 @@ export class FinanceService {
     fromDate: Date,
     toDate: Date,
   ): Promise<AssetFinanceReport> {
-    const candles = await this.saleRecordService.getCandles(
-      asset_name,
-      token_name,
-      fromDate,
-      toDate,
-      tradeWindow,
-    );
-    console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
-    return this.produceFinanceReport(candles);
+    try {
+      console.log;
+      const candles = await this.saleRecordService.getCandles(
+        asset_name,
+        token_name,
+        fromDate,
+        toDate,
+        tradeWindow,
+      );
+      console.log(`Got candles: \n ${JSON.stringify(candles, null, 3)}`);
+      return this.produceFinanceReport(candles);
+    } catch (e) {
+      console.log(`Error producing the finance report \n ${e}`);
+    }
   }
 
   private produceFinanceReport(candles: Candlestick[]): AssetFinanceReport {
@@ -49,11 +54,15 @@ export class FinanceService {
       total_volume.add(candle.volume);
       total_price.add(candle.sum_price);
     }
-    return {
+    const result = {
       EMA,
       VWAP: total_price_volume.div(total_volume),
       average_price: total_price.div(total_volume),
     };
+    console.log(
+      `Produced financial report: ${JSON.stringify(result, null, 3)}`,
+    );
+    return result;
   }
 
   private async setLastProcessedAt(timestamp: Date) {
