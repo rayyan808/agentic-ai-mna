@@ -2,7 +2,6 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class MaterializedViews1777392935153 implements MigrationInterface {
   name = "MaterializedViews1777392935153";
-  transaction?: boolean = false;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
