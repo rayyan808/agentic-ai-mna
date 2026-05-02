@@ -17,6 +17,8 @@ import { Agent, contextSchema } from "./agent.schema";
 @Injectable()
 export class AgentService {
   logger: AgentMiddleware;
+  private readonly agentCache = new Map<string, { session: Session; agent: Agent }>();
+
   constructor(
     private readonly chromiaService: ChromiaService,
     private readonly toolService: ToolService,
@@ -45,26 +47,25 @@ export class AgentService {
       return "claude-sonnet-4-6";
     }
   }
-  /** Non-streaming: returns the full reply after the agent finishes. */
-  private async createSession(
+  private async getOrCreateSession(
+    sessionId: string,
     model: string,
     privateKey: string,
   ): Promise<{ session: Session; agent: Agent }> {
-    const userSession = await this.chromiaService.createSession(privateKey);
-
-    const userAgent = createAgent({
-      model: this.findModel(model),
-      systemPrompt: SYSTEM_PROMPT,
-      middleware: [this.logger],
-      contextSchema,
-      tools: this.toolService.getAllTools(userSession),
-      checkpointer: new MemorySaver(),
-    });
-    console.log(`Agent with session ready..`);
-    return {
-      session: userSession,
-      agent: userAgent,
-    };
+    if (!this.agentCache.has(sessionId)) {
+      const userSession = await this.chromiaService.createSession(privateKey);
+      const userAgent = createAgent({
+        model: this.findModel(model),
+        systemPrompt: SYSTEM_PROMPT,
+        middleware: [this.logger],
+        contextSchema,
+        tools: this.toolService.getAllTools(userSession),
+        checkpointer: new MemorySaver(),
+      });
+      this.agentCache.set(sessionId, { session: userSession, agent: userAgent });
+      console.log(`Agent with session created and cached`);
+    }
+    return this.agentCache.get(sessionId)!;
   }
 
   config(sessionId: string, evmAddress: string) {
@@ -87,14 +88,13 @@ export class AgentService {
     evmAddress: string,
   ): AsyncGenerator<StreamChunk> {
     let finalOutput = "";
-    const { session, agent } = await this.createSession(model, privateKey);
-    console.log(`Agent with session ready..`);
+    const { agent } = await this.getOrCreateSession(sessionId, model, privateKey);
     try {
       const stream = await agent.stream(
         { messages: [new HumanMessage(input)] } as any,
         {
           ...this.config(sessionId, evmAddress),
-          streamMode: ["messages"],
+          streamMode: ["messages", "updates"],
         },
       );
 
