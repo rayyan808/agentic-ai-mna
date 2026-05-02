@@ -12,7 +12,7 @@ import { TokenService } from "src/token/token.service";
 @Injectable()
 export class ListenerService {
   version: number;
-  page_size: number = 5000;
+  page_size: number = 10000;
 
   constructor(
     @InjectRepository(ListenerConfig)
