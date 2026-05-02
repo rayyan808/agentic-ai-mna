@@ -88,6 +88,9 @@ export class AgentService {
     evmAddress: string,
   ): AsyncGenerator<StreamChunk> {
     let finalOutput = "";
+    if (!this.agentCache.has(sessionId)) {
+      yield { type: "status", data: "initializing" };
+    }
     const { agent } = await this.getOrCreateSession(sessionId, model, privateKey);
     try {
       const stream = await agent.stream(
