@@ -22,10 +22,10 @@ export class ChatController {
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
+    (res.socket as import("net").Socket | null)?.setNoDelay(true);
 
     const send = (event: string, data: unknown) => {
-      res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
     try {
