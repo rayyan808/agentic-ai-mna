@@ -301,7 +301,13 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
-  const sessionId = useRef(generateUUID());
+  const sessionId = useRef(
+    localStorage.getItem('mna_agent_chat_session_id') ?? (() => {
+      const id = generateUUID();
+      localStorage.setItem('mna_agent_chat_session_id', id);
+      return id;
+    })()
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
