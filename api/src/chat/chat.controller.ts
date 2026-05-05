@@ -50,8 +50,8 @@ export class ChatController {
   }
 
   @Delete(":sessionId")
-  reset(@Param("sessionId") sessionId: string) {
-    this.agent.reset(sessionId);
+  async reset(@Param("sessionId") sessionId: string) {
+    await this.agent.reset(sessionId);
     return { ok: true };
   }
 }
