@@ -98,26 +98,28 @@ export class AgentService {
   ): Promise<{ session: Session; agent: Agent }> {
     if (!this.agentCache.has(sessionId)) {
       await this.evictIfNeeded();
-      const userSession = await this.chromiaService.createSession(privateKey);
-      const checkpointer = new MemorySaver();
-      const userAgent = createAgent({
-        model: this.findModel(model),
-        systemPrompt: SYSTEM_PROMPT,
-        middleware: [this.logger],
-        contextSchema,
-        tools: this.toolService.getAllTools(userSession),
-        checkpointer,
-      });
-      this.agentCache.set(sessionId, {
-        session: userSession,
-        agent: userAgent,
-        checkpointer,
-        lastUsed: Date.now(),
-      });
-      console.log(`Agent with session created and cached`);
-    } else {
-      this.agentCache.get(sessionId)!.lastUsed = Date.now();
+      if (!this.agentCache.has(sessionId)) {
+        const userSession = await this.chromiaService.createSession(privateKey);
+        const checkpointer = new MemorySaver();
+        const userAgent = createAgent({
+          model: this.findModel(model),
+          systemPrompt: SYSTEM_PROMPT,
+          middleware: [this.logger],
+          contextSchema,
+          tools: this.toolService.getAllTools(userSession),
+          checkpointer,
+        });
+        // Synchronous from here — no interleaving possible before set()
+        this.agentCache.set(sessionId, {
+          session: userSession,
+          agent: userAgent,
+          checkpointer,
+          lastUsed: Date.now(),
+        });
+        console.log(`Agent with session created and cached`);
+      }
     }
+    this.agentCache.get(sessionId)!.lastUsed = Date.now();
     return this.agentCache.get(sessionId)!;
   }
 
