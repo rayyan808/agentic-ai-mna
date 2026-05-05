@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { ChromiaService } from "src/chromia/chromia.service";
 import { ToolService } from "../tools/tools.service";
 import {
@@ -14,10 +15,13 @@ import { MemorySaver } from "@langchain/langgraph";
 import { AgentMiddleware } from "langchain";
 import { Agent, contextSchema } from "./agent.schema";
 
+const MAX_SESSIONS = 100;
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 @Injectable()
 export class AgentService {
   logger: AgentMiddleware;
-  private readonly agentCache = new Map<string, { session: Session; agent: Agent }>();
+  private readonly agentCache = new Map<string, { session: Session; agent: Agent; lastUsed: number }>();
 
   constructor(
     private readonly chromiaService: ChromiaService,
@@ -47,12 +51,38 @@ export class AgentService {
       return "claude-sonnet-4-6";
     }
   }
+  private evictIfNeeded() {
+    if (this.agentCache.size < MAX_SESSIONS) return;
+    let oldestKey: string | undefined;
+    let oldestTime = Infinity;
+    for (const [key, entry] of this.agentCache) {
+      if (entry.lastUsed < oldestTime) {
+        oldestTime = entry.lastUsed;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) this.agentCache.delete(oldestKey);
+  }
+
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  evictStaleSessions() {
+    const cutoff = Date.now() - SESSION_TTL_MS;
+    for (const [key, entry] of this.agentCache) {
+      if (entry.lastUsed < cutoff) this.agentCache.delete(key);
+    }
+  }
+
+  reset(sessionId: string) {
+    this.agentCache.delete(sessionId);
+  }
+
   private async getOrCreateSession(
     sessionId: string,
     model: string,
     privateKey: string,
   ): Promise<{ session: Session; agent: Agent }> {
     if (!this.agentCache.has(sessionId)) {
+      this.evictIfNeeded();
       const userSession = await this.chromiaService.createSession(privateKey);
       const userAgent = createAgent({
         model: this.findModel(model),
@@ -62,8 +92,10 @@ export class AgentService {
         tools: this.toolService.getAllTools(userSession),
         checkpointer: new MemorySaver(),
       });
-      this.agentCache.set(sessionId, { session: userSession, agent: userAgent });
+      this.agentCache.set(sessionId, { session: userSession, agent: userAgent, lastUsed: Date.now() });
       console.log(`Agent with session created and cached`);
+    } else {
+      this.agentCache.get(sessionId)!.lastUsed = Date.now();
     }
     return this.agentCache.get(sessionId)!;
   }

@@ -13,6 +13,8 @@ import { TokenService } from "src/token/token.service";
 export class ListenerService {
   version: number;
   page_size: number = 10000;
+  private consecutiveErrors: number = 0;
+  private static readonly MAX_CONSECUTIVE_ERRORS = 5;
 
   constructor(
     @InjectRepository(ListenerConfig)
@@ -28,13 +30,19 @@ export class ListenerService {
   //@TODO: Convert this to atomic transactions, rollback on failure
   @Cron(CronExpression.EVERY_10_SECONDS)
   async process() {
+    if (this.consecutiveErrors >= ListenerService.MAX_CONSECUTIVE_ERRORS) {
+      return;
+    }
     const lastProcessedRow = await this.getLastProcessedRow();
     try {
       const paginated_results = await this.chromiaService.get_sale_records(
         lastProcessedRow,
         this.page_size,
       );
-      if (lastProcessedRow == paginated_results.row_id) return;
+      if (lastProcessedRow == paginated_results.row_id) {
+        this.consecutiveErrors = 0;
+        return;
+      }
       //For each sale record
       for (let {
         asset_name,
@@ -56,9 +64,17 @@ export class ListenerService {
       }
 
       await this.updateLastProcessedRow(paginated_results.row_id);
+      this.consecutiveErrors = 0;
     } catch (e) {
-      //Abort processing + log an error in the dead letter queue
-      console.log(`[Listener] Error processing... \n ${e}`);
+      this.consecutiveErrors++;
+      if (this.consecutiveErrors === ListenerService.MAX_CONSECUTIVE_ERRORS) {
+        console.error(
+          `[Listener] Halting after ${ListenerService.MAX_CONSECUTIVE_ERRORS} consecutive errors — check CHROMIA_NODE_URL / CHROMIA_BRID.`,
+          e,
+        );
+      } else {
+        console.error(`[Listener] Error processing...`, e);
+      }
     }
   }
   async updateLastProcessedRow(newRow: number) {
