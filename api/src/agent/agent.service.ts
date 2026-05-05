@@ -15,13 +15,21 @@ import { MemorySaver } from "@langchain/langgraph";
 import { AgentMiddleware } from "langchain";
 import { Agent, contextSchema } from "./agent.schema";
 
-const MAX_SESSIONS = 100;
+const MAX_SESSIONS = 10;
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 @Injectable()
 export class AgentService {
   logger: AgentMiddleware;
-  private readonly agentCache = new Map<string, { session: Session; agent: Agent; checkpointer: MemorySaver; lastUsed: number }>();
+  private readonly agentCache = new Map<
+    string,
+    {
+      session: Session;
+      agent: Agent;
+      checkpointer: MemorySaver;
+      lastUsed: number;
+    }
+  >();
 
   constructor(
     private readonly chromiaService: ChromiaService,
@@ -100,7 +108,12 @@ export class AgentService {
         tools: this.toolService.getAllTools(userSession),
         checkpointer,
       });
-      this.agentCache.set(sessionId, { session: userSession, agent: userAgent, checkpointer, lastUsed: Date.now() });
+      this.agentCache.set(sessionId, {
+        session: userSession,
+        agent: userAgent,
+        checkpointer,
+        lastUsed: Date.now(),
+      });
       console.log(`Agent with session created and cached`);
     } else {
       this.agentCache.get(sessionId)!.lastUsed = Date.now();
@@ -131,7 +144,11 @@ export class AgentService {
     if (!this.agentCache.has(sessionId)) {
       yield { type: "status", data: "initializing" };
     }
-    const { agent } = await this.getOrCreateSession(sessionId, model, privateKey);
+    const { agent } = await this.getOrCreateSession(
+      sessionId,
+      model,
+      privateKey,
+    );
     try {
       const stream = await agent.stream(
         { messages: [new HumanMessage(input)] } as any,
