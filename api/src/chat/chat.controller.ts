@@ -28,14 +28,15 @@ export class ChatController {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
+    const gen = this.agent.stream(
+      sessionId ?? "default",
+      message,
+      privateKey,
+      model,
+      evmAddress,
+    );
     try {
-      for await (const chunk of this.agent.stream(
-        sessionId ?? "default",
-        message,
-        privateKey,
-        model,
-        evmAddress,
-      )) {
+      for await (const chunk of gen) {
         send(chunk.type, chunk.data);
         if (chunk.type === "final" || chunk.type === "error") break;
       }
@@ -43,13 +44,14 @@ export class ChatController {
     } catch (err) {
       send("error", err instanceof Error ? err.message : String(err));
     } finally {
+      await gen.return(undefined);
       res.end();
     }
   }
 
   @Delete(":sessionId")
   reset(@Param("sessionId") sessionId: string) {
-    // this.agent.reset(sessionId);
+    this.agent.reset(sessionId);
     return { ok: true };
   }
 }
