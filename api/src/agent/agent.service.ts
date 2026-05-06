@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { ChromiaService } from "src/chromia/chromia.service";
 import { ToolService } from "../tools/tools.service";
 import {
@@ -14,9 +15,22 @@ import { MemorySaver } from "@langchain/langgraph";
 import { AgentMiddleware } from "langchain";
 import { Agent, contextSchema } from "./agent.schema";
 
+const MAX_SESSIONS = 10;
+const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 @Injectable()
 export class AgentService {
   logger: AgentMiddleware;
+  private readonly agentCache = new Map<
+    string,
+    {
+      session: Session;
+      agent: Agent;
+      checkpointer: MemorySaver;
+      lastUsed: number;
+    }
+  >();
+
   constructor(
     private readonly chromiaService: ChromiaService,
     private readonly toolService: ToolService,
@@ -45,26 +59,68 @@ export class AgentService {
       return "claude-sonnet-4-6";
     }
   }
-  /** Non-streaming: returns the full reply after the agent finishes. */
-  private async createSession(
+  private async deleteSession(sessionId: string) {
+    const entry = this.agentCache.get(sessionId);
+    if (!entry) return;
+    await entry.checkpointer.deleteThread(sessionId);
+    this.agentCache.delete(sessionId);
+  }
+
+  private async evictIfNeeded() {
+    if (this.agentCache.size < MAX_SESSIONS) return;
+    let oldestKey: string | undefined;
+    let oldestTime = Infinity;
+    for (const [key, entry] of this.agentCache) {
+      if (entry.lastUsed < oldestTime) {
+        oldestTime = entry.lastUsed;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) await this.deleteSession(oldestKey);
+  }
+
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async evictStaleSessions() {
+    const cutoff = Date.now() - SESSION_TTL_MS;
+    for (const [key, entry] of this.agentCache) {
+      if (entry.lastUsed < cutoff) await this.deleteSession(key);
+    }
+  }
+
+  async reset(sessionId: string) {
+    await this.deleteSession(sessionId);
+  }
+
+  private async getOrCreateSession(
+    sessionId: string,
     model: string,
     privateKey: string,
   ): Promise<{ session: Session; agent: Agent }> {
-    const userSession = await this.chromiaService.createSession(privateKey);
-
-    const userAgent = createAgent({
-      model: this.findModel(model),
-      systemPrompt: SYSTEM_PROMPT,
-      middleware: [this.logger],
-      contextSchema,
-      tools: this.toolService.getAllTools(userSession),
-      checkpointer: new MemorySaver(),
-    });
-    console.log(`Agent with session ready..`);
-    return {
-      session: userSession,
-      agent: userAgent,
-    };
+    if (!this.agentCache.has(sessionId)) {
+      await this.evictIfNeeded();
+      if (!this.agentCache.has(sessionId)) {
+        const userSession = await this.chromiaService.createSession(privateKey);
+        const checkpointer = new MemorySaver();
+        const userAgent = createAgent({
+          model: this.findModel(model),
+          systemPrompt: SYSTEM_PROMPT,
+          middleware: [this.logger],
+          contextSchema,
+          tools: this.toolService.getAllTools(userSession),
+          checkpointer,
+        });
+        // Synchronous from here — no interleaving possible before set()
+        this.agentCache.set(sessionId, {
+          session: userSession,
+          agent: userAgent,
+          checkpointer,
+          lastUsed: Date.now(),
+        });
+        console.log(`Agent with session created and cached`);
+      }
+    }
+    this.agentCache.get(sessionId)!.lastUsed = Date.now();
+    return this.agentCache.get(sessionId)!;
   }
 
   config(sessionId: string, evmAddress: string) {
@@ -87,14 +143,20 @@ export class AgentService {
     evmAddress: string,
   ): AsyncGenerator<StreamChunk> {
     let finalOutput = "";
-    const { session, agent } = await this.createSession(model, privateKey);
-    console.log(`Agent with session ready..`);
+    if (!this.agentCache.has(sessionId)) {
+      yield { type: "status", data: "initializing" };
+    }
+    const { agent } = await this.getOrCreateSession(
+      sessionId,
+      model,
+      privateKey,
+    );
     try {
       const stream = await agent.stream(
         { messages: [new HumanMessage(input)] } as any,
         {
           ...this.config(sessionId, evmAddress),
-          streamMode: ["messages"],
+          streamMode: ["messages", "updates"],
         },
       );
 

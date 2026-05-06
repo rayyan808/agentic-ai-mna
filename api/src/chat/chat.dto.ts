@@ -17,4 +17,5 @@ export type StreamChunk =
   | { type: "tool_start"; data: string }
   | { type: "tool_end"; data: string }
   | { type: "final"; data: string }
-  | { type: "error"; data: string };
+  | { type: "error"; data: string }
+  | { type: "status"; data: string };

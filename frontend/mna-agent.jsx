@@ -263,7 +263,7 @@ function AgentMessage({ events }) {
   );
 }
 
-function ThinkingDots() {
+function ThinkingDots({ label }) {
   return (
     <div style={{ display: "flex", gap: 5, alignItems: "center", padding: "4px 0" }}>
       {[0, 1, 2].map(i => (
@@ -276,6 +276,9 @@ function ThinkingDots() {
           animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
         }} />
       ))}
+      {label && (
+        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginLeft: 4 }}>{label}</span>
+      )}
     </div>
   );
 }
@@ -301,7 +304,13 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
-  const sessionId = useRef(generateUUID());
+  const sessionId = useRef(
+    localStorage.getItem('mna_agent_chat_session_id') ?? (() => {
+      const id = generateUUID();
+      localStorage.setItem('mna_agent_chat_session_id', id);
+      return id;
+    })()
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -377,7 +386,7 @@ export default function App() {
       setTimeout(() => inputRef.current?.focus(), 100);
     };
 
-    ["token", "tool_start", "tool_end", "final", "error"].forEach(eventType => {
+    ["token", "tool_start", "tool_end", "final", "error", "status"].forEach(eventType => {
       es.addEventListener(eventType, (e) => {
         const data = JSON.parse(e.data);
         addEvent({ type: eventType, data });
@@ -608,11 +617,17 @@ export default function App() {
                       agent
                     </span>
                   </div>
-                  {msg.pending && msg.events.length === 0 ? (
-                    <ThinkingDots />
-                  ) : (
-                    <AgentMessage events={msg.events} />
-                  )}
+                  {(() => {
+                    const hasContent = msg.events.some(e =>
+                      ["token", "tool_start", "final", "error"].includes(e.type)
+                    );
+                    const isInitializing = msg.events.some(e => e.type === "status" && e.data === "initializing");
+                    return msg.pending && !hasContent ? (
+                      <ThinkingDots label={isInitializing ? "Setting up agent…" : undefined} />
+                    ) : (
+                      <AgentMessage events={msg.events} />
+                    );
+                  })()}
                 </div>
               )}
             </div>
