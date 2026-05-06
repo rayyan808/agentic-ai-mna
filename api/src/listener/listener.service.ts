@@ -26,7 +26,7 @@ export class ListenerService {
   }
 
   //@TODO: Convert this to atomic transactions, rollback on failure
-  @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_HOUR)
   async process() {
     const lastProcessedRow = await this.getLastProcessedRow();
     try {
@@ -57,8 +57,7 @@ export class ListenerService {
 
       await this.updateLastProcessedRow(paginated_results.row_id);
     } catch (e) {
-      //Abort processing + log an error in the dead letter queue
-      console.log(`[Listener] Error processing... \n ${e}`);
+      console.error(`[Listener] Error processing...`, e);
     }
   }
   async updateLastProcessedRow(newRow: number) {
