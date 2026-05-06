@@ -36,13 +36,13 @@ export class AgentService {
   private findModel(name: string): string {
     //probably should add tempreture and other configs here per-model
     if (name.startsWith("claude")) {
-      return "claude-sonnet-4-6";
+      return "claude-opus-4-6";
     } else if (name.startsWith("openAI")) {
       return "openai:gpt-5.4";
     } else if (name.startsWith("Ollama")) {
       return "llama-3.1:8b";
     } else {
-      return "claude-sonnet-4-6";
+      return "claude-opus-4-6";
     }
   }
   /** Non-streaming: returns the full reply after the agent finishes. */
