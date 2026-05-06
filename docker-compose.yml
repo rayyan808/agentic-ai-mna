@@ -58,5 +58,19 @@ services:
     depends_on:
       - frontend
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      - TERM=linux
+      - GF_PLUGINS_PREINSTALL=grafana-clock-panel,grafana-polystat-panel
+    ports:
+      - "3300:3000"
+    volumes:
+      - "grafana_storage:/var/lib/grafana"
+    depends_on:
+      - db
 volumes:
+  grafana_storage:
   postgres_data:
