@@ -74,3 +74,4 @@ services:
 volumes:
   grafana_storage:
   postgres_data:
+    name: postgres_data
