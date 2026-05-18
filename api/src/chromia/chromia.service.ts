@@ -14,6 +14,7 @@ import {
 import { Injectable, Scope } from "@nestjs/common";
 import {
   createInMemoryEvmKeyStore,
+  createInMemoryFtKeyStore,
   createKeyStoreInteractor,
   Session,
 } from "@chromia/ft4";
@@ -40,8 +41,8 @@ export class ChromiaService {
     const _client = await this.getChromiaClient();
     //Keep da private key out of the model
     const keyPair = encryption.makeKeyPair(privateKey);
-    const evmKeyStore = createInMemoryEvmKeyStore(keyPair);
-    const interactor = createKeyStoreInteractor(_client, evmKeyStore);
+    const ftKeyStore = createInMemoryFtKeyStore(keyPair);
+    const interactor = createKeyStoreInteractor(_client, ftKeyStore);
     const accounts = await interactor.getAccounts();
     const account = accounts[0];
     const session = await interactor.getSession(account.id);
